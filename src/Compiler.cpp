@@ -64,9 +64,14 @@ int main()
 
     // 中间代码优化
     optimize_mid();
-
     print_mid();
     fout4.close();
+
+    // 目标代码生成
+    mid_2_mips();
+    print_mips();
+    fout5.close();
+
 
     return 0;
 }

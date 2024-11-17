@@ -847,4 +847,6 @@ LLVM *generate_RelExp(Node *root);
 LLVM *generate_EqExp(Node *root);
 void generate_LAndExp(Node *root, LLVM *trueLabel, LLVM *falseLabel);
 void generate_LOrExp(Node *root, LLVM *trueLabel, LLVM *falseLabel);
+
+LLVM *find_GStr(string str, int len);
 void symbols_2_mid();

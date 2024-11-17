@@ -388,7 +388,7 @@ bool generate_Stmt(Node *root)
             }
             else
             {
-                LLVM *gStr = generate_midCode(new GStrLLVM(str, lenList.at(k) + 1));
+                LLVM *gStr = find_GStr(str, lenList.at(k) + 1);
                 generate_midCode(new CallLLVM(gStr));
                 k++;
             }
@@ -953,6 +953,18 @@ void generate_LOrExp(Node *root, LLVM *trueLabel, LLVM *falseLabel)
     }
     return;
 }
+
+LLVM *find_GStr(string str, int len)
+{
+    for (LLVM *llvm : strCodes)
+    {
+        GStrLLVM *gStrLLVM = dynamic_cast<GStrLLVM *>(llvm);
+        if (gStrLLVM->str == str)
+            return gStrLLVM;
+    }
+    return generate_midCode(new GStrLLVM(str, len));
+}
+
 void symbols_2_mid()
 {
     curScope = 1;

@@ -9,3 +9,7 @@ src/lexer.txt
 src/error.txt
 src/Compiler.exe
 src/llvm_ir.txt
+src/test.cpp
+src/test.exe
+src/code.zip
+src/mips.txt

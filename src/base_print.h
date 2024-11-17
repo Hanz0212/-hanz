@@ -110,3 +110,12 @@ void print_errors()
         ferr << e.first << " " << e.second << endl;
     }
 }
+
+void print_mips()
+{  
+    fout5 << ".data" << endl;
+    for (Mips *mips : mipsCodes)
+    {
+        fout5 << mips->toString() << endl;
+    }
+}
