@@ -13,3 +13,8 @@ src/test.cpp
 src/test.exe
 src/code.zip
 src/mips.txt
+src/mid.ll
+src\2024词法分析公共测试程序库.zip
+src\2024语法分析公共测试程序库.zip
+src\2024语义分析公共测试程序库.zip
+src\2024代码生成公共测试程序库.zip
