@@ -7,7 +7,7 @@ declare void @putstr(i8*)      ; 输出字符串
 @.str.1 = private unnamed_addr constant [10 x i8] c"21371295\0A\00"
 
 
-define dso_local i32 @main() {
+define dso_local  i32 @main() {
   call void @putstr(i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.1, i32 0, i32 0))
   %1 = alloca i32
   store i32 0, i32* %1

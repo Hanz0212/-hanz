@@ -8,7 +8,7 @@ zip_path = os.path.join(work_path, zip_name)
 
 def zip_cpp_h_files():
     # 检查 zip 文件是否已经存在
-    if os.path.exists(zip_path):
+    if os.path.exists(zip_path) :
         # 询问用户是否替换现有的 zip 文件
         choice = input(f"{zip_path} 已经存在，是否替换？(y/n): ")
         if choice.lower() == 'y':  

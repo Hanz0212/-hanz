@@ -1,2 +1,2 @@
 2 j Int
-3 j Int
+3 j    Int

@@ -7,7 +7,7 @@ declare void @putstr(i8*)      ; 输出字符串
 
 define dso_local i32 @main() {
   %1 = alloca i32
-  br label %2
+  br label  %2
 
 2:
   %3 = alloca i32

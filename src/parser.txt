@@ -1,7 +1,7 @@
 INTTK int
 MAINTK main
 LPARENT (
-RPARENT )
+RP   ARENT )
 LBRACE {
 FORTK for
 LPARENT (
