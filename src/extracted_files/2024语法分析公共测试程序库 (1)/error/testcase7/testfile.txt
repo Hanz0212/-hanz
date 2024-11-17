@@ -1,0 +1,11 @@
+const int arr[1 = { 1 };
+
+void f() {
+    char str[1 = { 'a' };
+    return;
+}
+
+int main() {
+    f(;
+    return 0
+}

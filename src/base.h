@@ -27,6 +27,7 @@ ifstream fin("testfile.txt");
 #include "base_symbol_declare.h"
 #include "base_cal_declare.h"
 #include "base_mid_declare.h"
+#include "base_final_declare.h"
 #include "base_error_declare.h"
 
 #include "base_error.h"
@@ -35,6 +36,7 @@ ifstream fin("testfile.txt");
 #include "base_symbol.h"
 #include "base_cal.h"
 #include "base_mid.h"
+#include "base_final.h"
 
 #include "base_print.h"
 #include "base_optimize_mid.h"
