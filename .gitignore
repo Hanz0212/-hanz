@@ -8,3 +8,4 @@ src/tozip.py
 src/lexer.txt
 src/error.txt
 src/Compiler.exe
+src/llvm_ir.txt
