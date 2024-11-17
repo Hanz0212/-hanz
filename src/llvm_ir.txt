@@ -1,40 +1,10 @@
-declare i32 @getint()          ; 读取一个整数
-declare i32 @getchar()     ; 读取一个字符
-declare void @putint(i32)      ; 输出一个整数
-declare void @putch(i32)       ; 输出一个字符
-declare void @putstr(i8*)      ; 输出字符串
-
-
-define dso_local i32 @main() {
-  %1 = alloca i32
-  br label  %2
-
-2:
-  %3 = alloca i32
-  br label %4
-
-4:
-  br label %2
-
-5:
-  %6 = alloca i32
-  store i32 1, i32* %6
-  br label %7
-
-7:
-  br label %8
-
-8:
-  %9 = load i32, i32* %6
-  %10 = mul i32 %9, 2
-  store i32 %10, i32* %6
-  br label %7
-
-11:
-  store i32 0, i32* %1
-  br label %12
-
-12:
-  %13 = load i32, i32* %1
-  ret i32 %13
-}
+damn
+damn
+damn
+damn
+damn
+damn
+damn
+damn
+damn
+damn

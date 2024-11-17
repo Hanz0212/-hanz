@@ -6,3 +6,4 @@ src/symbol.txt
 src/parser.txt
 src/tozip.py
 src/lexer.txt
+src/error.txt
