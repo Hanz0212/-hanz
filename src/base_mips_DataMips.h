@@ -49,7 +49,7 @@ struct GlobalDefMips : DataMips
     string toString() override
     {
         string initValTk;
-        string lenTk = isIntType(varType) ? "word" : "byte";
+        string lenTk = isIntType(varType) ? "word" : "word";
         for (int val : varInitVals)
             initValTk += to_string(val) + ", ";
         if (!initValTk.empty())
@@ -63,7 +63,7 @@ struct GlobalDefMips : DataMips
         string initZeroTk;
         if (varInitVals.size() < varLength)
             initZeroTk = join_str({initValTk.empty() ? "\t.space" : "\n\t\t.space",
-                                   to_string((varLength - varInitVals.size()) * (isIntType(varType) ? 4 : 1))});
+                                   to_string((varLength - varInitVals.size()) * (isIntType(varType) ? 4 : 4))});
 
         return "\t" + join_str({varName + ":" + initValTk, initZeroTk});
     }
@@ -79,3 +79,4 @@ struct GlobalStrMips : DataMips
         return "\t" + join_str({".str" + to_string(loc) + ":\t" + ".asciiz", "\"" + str + "\""});
     }
 };
+

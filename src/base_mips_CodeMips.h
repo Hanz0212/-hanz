@@ -15,15 +15,12 @@ struct CodeMips : Mips
 
 struct RTypeMips : CodeMips // 三寄存器运算
 {
-    RTypeMips(mips_type mipsType, RegPtr rs, RegPtr rt, RegPtr rd, string annotation)
+    RTypeMips(mips_type mipsType, RegPtr rd, RegPtr rs, RegPtr rt, string annotation)
         : CodeMips(mipsType, rs, rt, rd, NULL, NULL, annotation) {}
 
     string toString() override
     {
-        return "\t" + join_str({mips_type_2_opstr.at(mipsType),
-                                rd->getStr() + ",",
-                                rs->getStr() + ",",
-                                rt->getStr()}) + Mips::toString();
+        return "\t" + join_str({mips_type_2_opstr.at(mipsType), rd->getStr() + ",", rs->getStr() + ",", rt->getStr()}) + Mips::toString();
     }
 };
 
@@ -31,7 +28,7 @@ struct RTypeMips : CodeMips // 三寄存器运算
 struct MFTypeMips : RTypeMips
 {
     MFTypeMips(bool isMfhi, RegPtr rd, string annotation)
-        : RTypeMips(isMfhi ? MFHI_OP : MFLO_OP, NULL, NULL, rd, annotation) {}
+        : RTypeMips(isMfhi ? MFHI_OP : MFLO_OP, rd, NULL, NULL, annotation) {}
 
     string toString() override
     {
@@ -43,7 +40,7 @@ struct MFTypeMips : RTypeMips
 struct MDTypeMips : RTypeMips
 {
     MDTypeMips(bool isDiv, RegPtr rs, RegPtr rt, string annotation)
-        : RTypeMips(isDiv ? DIV_OP : MULT_OP, rs, rt, NULL, annotation) {}
+        : RTypeMips(isDiv ? DIV_OP : MULT_OP, NULL, rs, rt, annotation) {}
 
     string toString() override
     {
@@ -72,21 +69,20 @@ struct ITypeMips : CodeMips
 // lw sw
 struct MEMTypeMips : ITypeMips
 {
-    MEMTypeMips(mips_type mipsType, RegPtr rt, RegPtr rs, RegPtr intermediate, string annotation)
-        : ITypeMips(mipsType, rt, rs, intermediate, annotation) {}
+    MEMTypeMips(mips_type mipsType, RegPtr rt, RegPtr desReg, string annotation)
+        : ITypeMips(mipsType, rt, NULL, desReg, annotation) {}
 
     string toString() override
     {
+        RegPtr desReg = intermediate;
         string opTk = mipsType == STORE_OP ? "sw" : "lw";
         string result;
-        if (rs->getType() == LABEL && intermediate->getType() == OFFSET) // label + val
-            result = join_str({opTk, rt->getStr() + ",", rs->getStr(), "+", intermediate->getStr()});
-        else if (rs->getType() == LABEL && in32Reg(intermediate->getType())) // label($t)
-            result = join_str({opTk, rt->getStr() + ",", rs->getStr() + "(" + intermediate->getStr() + ")"});
-        else if (in32Reg(rs->getType()) && intermediate->getType() == OFFSET) // val($sp)
-            result = join_str({opTk, rt->getStr() + ",", intermediate->getStr() + "(" + rs->getStr() + ")"});
-        else if (intermediate->getType() == LABEL)
-            result = join_str({opTk, rt->getStr() + ",", intermediate->getStr()});
+        if (in32Reg(desReg->getType())) // 0($desReg)
+            result = join_str({opTk, rt->getStr() + ",", "0(" + desReg->getStr() + ")"});
+        else if (desReg->getType() == OFFSET) // val($sp)
+            result = join_str({opTk, rt->getStr() + ",", desReg->getStr() + "($sp)"});
+        else if (desReg->getType() == LABEL) // label
+            result = join_str({opTk, rt->getStr() + ",", desReg->getStr()});
         else
             DIE("wrong fomat in LoadMips");
         result = "\t" + result + Mips::toString();
@@ -94,20 +90,20 @@ struct MEMTypeMips : ITypeMips
     }
 };
 
-// rt -> intermediate(rs)
+// rt -> desReg(label/offset($sp)/0($reg))
 struct StoreMips : MEMTypeMips
 {
-    // rt -> intermediate(rs)
-    StoreMips(RegPtr rt, RegPtr rs, RegPtr intermediate, string annotation)
-        : MEMTypeMips(STORE_OP, rt, rs, intermediate, annotation) {}
+    // rt -> desReg(label/offset($sp)/0($reg))
+    StoreMips(RegPtr rt, RegPtr desReg, string annotation)
+        : MEMTypeMips(STORE_OP, rt, desReg, annotation) {}
 };
 
-// rt <- intermediate(rs)
+// rt <- desReg(label/offset($sp)/0($reg))
 struct LoadMips : MEMTypeMips
 {
-    // rt <- intermediate(rs)
-    LoadMips(RegPtr rt, RegPtr rs, RegPtr intermediate, string annotation)
-        : MEMTypeMips(LOAD_OP, rt, rs, intermediate, annotation) {}
+    // rt <- desReg(label/offset($sp)/0($reg))
+    LoadMips(RegPtr rt, RegPtr desReg, string annotation)
+        : MEMTypeMips(LOAD_OP, rt, desReg, annotation) {}
 };
 
 struct JTypeMips : CodeMips
@@ -125,6 +121,33 @@ struct LiMips : CodeMips
     }
 };
 
+struct LaMips : CodeMips
+{
+    // offset需为reg
+    LaMips(RegPtr rt, RegPtr base, RegPtr offset, string annotation)
+        : CodeMips(LA_OP, base, rt, NULL, offset, NULL, annotation)
+    {
+        if (base->getType() == OFFSET && !in32Reg(offset->getType()))
+            DIE("in LaMips: Invalid <base,offset> type: <" +
+                reg_type_2_str(base->getType()) + "," + reg_type_2_str(offset->getType()) + ">");
+    }
+
+    string toString() override
+    {
+        string result = "\t";
+        RegPtr base = rs, offset = intermediate;
+        if (base->getType() == LABEL && offset->getType() == INTERMEDIATE)
+            result += join_str({"la", rt->getStr() + ",", base->getStr(), "+", offset->getStr()});
+        else if (base->getType() == LABEL && in32Reg(offset->getType()))
+            result += join_str({"la", rt->getStr() + ",", base->getStr() + "(" + offset->getStr() + ")"});
+        else if (base->getType() == OFFSET)
+            result += join_str({"la", rt->getStr() + ",", base->getStr() + "(" + offset->getStr() + ")"});
+        else
+            DIE("in LaMips toString invalid type");
+        return result + Mips::toString();
+    }
+};
+
 struct LabelMips : CodeMips
 {
     LabelMips(RegPtr labelName, string annotation)
@@ -134,4 +157,10 @@ struct LabelMips : CodeMips
     {
         return labelName->getStr() + ":";
     }
+};
+
+struct AnnotationMips : CodeMips
+{
+    AnnotationMips(string annotation)
+        : CodeMips(ANNOTATION_OP, NULL, NULL, NULL, NULL, NULL, annotation) {}
 };

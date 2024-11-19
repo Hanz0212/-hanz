@@ -19,7 +19,7 @@ ofstream fout2("parser.txt");
 ofstream fout3("symbol.txt");
 // ofstream fout4("mid.ll");
 ofstream fout4("llvm_ir.txt");
-ofstream fout5("mips.txt");
+ofstream fout5("mips.asm");
 ofstream ferr("error.txt");
 ifstream fin("testfile.txt");
 

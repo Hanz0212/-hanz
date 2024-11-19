@@ -32,21 +32,23 @@ void mid_2_mips()
         case ALLOCA_IR:
         {
             AllocaLLVM *allocaLLVM = dynamic_cast<AllocaLLVM *>(llvm);
-            manager->allocMem(allocaLLVM, allocaLLVM->length);
+            RegPtr offset = manager->allocMem(allocaLLVM, allocaLLVM->length);
+            manager->addAnnotation(new AnnotationMips("#" + offset->getStr() + "($sp) " + llvm->toString()));
             break;
         }
         case LOAD_IR:
         {
             LoadLLVM *loadLLVM = dynamic_cast<LoadLLVM *>(llvm);
-            RegPtr intermediate = manager->findOccupiedReg(loadLLVM->des);
+            RegPtr desReg = manager->findOccupiedReg(loadLLVM->des);
+            // desReg保证:全局局部数组一定返回reg，全局变量一定返回label, 置true一定返回tempReg,局部变量返回offset
             RegPtr rt = manager->allocTempReg(loadLLVM);
-            manager->addCode(new LoadMips(rt, manager->sp, intermediate, llvm->toString()));
+            manager->addCode(new LoadMips(rt, desReg, llvm->toString()));
             break;
         }
         case STORE_IR:
         {
             StoreLLVM *storeLLVM = dynamic_cast<StoreLLVM *>(llvm);
-            RegPtr intermediate = manager->findOccupiedReg(storeLLVM->des);
+            RegPtr desReg = manager->findOccupiedReg(storeLLVM->des);
             RegPtr rt;
             if (storeLLVM->val->midType == CONST_IR)
             {
@@ -65,33 +67,35 @@ void mid_2_mips()
             {
                 rt = manager->findOccupiedReg(storeLLVM->val);
             }
-            manager->addCode(new StoreMips(rt, manager->sp, intermediate, llvm->toString()));
+            manager->addCode(new StoreMips(rt, desReg, llvm->toString()));
             manager->tryReleaseReg(rt);
             break;
         }
         case GETELEMENTPTR_IR:
         {
             GetelementptrLLVM *array = dynamic_cast<GetelementptrLLVM *>(llvm);
-            RegPtr rs = manager->findOccupiedReg(array->src); // 全局或者局部
+            RegPtr base = manager->findOccupiedReg(array->src); // label / offset
+            RegPtr offset = array->offset->midType == CONST_IR
+                                ? new IntermediateReg(dynamic_cast<ConstLLVM *>(array->offset)->val * 4)
+                                : manager->findOccupiedReg(array->offset); // const / reg
             RegPtr rt = manager->allocTempReg(array);
-            if (array->offset->midType == CONST_IR)
+            if (base->getType() == LABEL)
             {
-                int constOffset = dynamic_cast<ConstLLVM *>(array->offset)->val * 4;
-                if (rs->getType() == LABEL) // label + val
-                    manager->addCode(new LoadMips(rt, rs, new OffsetReg(constOffset), llvm->toString()));
-                else if (rs->getType() == OFFSET) //  val($sp)
-                    manager->addCode(new LoadMips(rt, rs, new OffsetReg(constOffset + rs->val),
-                                                  llvm->toString()));
+                if (offset->getType() != INTERMEDIATE)
+                    manager->addCode(new ITypeMips(SLL_OP, offset, offset, new IntermediateReg(2), "#reg <<= 2"));
+                manager->addCode(new LaMips(rt, base, offset, llvm->toString()));
             }
-            else if (rs->getType() == LABEL) // label($t)
-                manager->addCode(new LoadMips(rt, rs, manager->findOccupiedReg(array->offset), llvm->toString()));
-            else // 0($t)
+            else if (base->getType() == OFFSET)
             {
-                manager->addCode(new ITypeMips(ADDIU_OP, rt, manager->findOccupiedReg(array->offset), rs, llvm->toString()));
-                manager->addCode(new RTypeMips(ADD_OP, manager->sp, rt, rt, ""));
-                manager->addCode(new LoadMips(rt, rt, manager->zero_off, llvm->toString()));
+                if (offset->getType() == INTERMEDIATE)
+                    manager->addCode(new ITypeMips(ADDIU_OP, rt, manager->sp, offset, "#reg = const+sp"));
+                else
+                {
+                    manager->addCode(new ITypeMips(SLL_OP, offset, offset, new IntermediateReg(2), "#reg <<= 2"));
+                    manager->addCode(new RTypeMips(ADD_OP, rt, manager->sp, offset, "#reg = reg+sp"));
+                }
+                manager->addCode(new LaMips(rt, base, rt, llvm->toString()));
             }
-
             break;
         }
         case ADD_IR:
@@ -113,7 +117,7 @@ void mid_2_mips()
             }
             else
             {
-                manager->addCode(new RTypeMips(mid_type_2_mips_type.at(rTypeLLVM->midType), rs, rt, rd, llvm->toString()));
+                manager->addCode(new RTypeMips(mid_type_2_mips_type.at(rTypeLLVM->midType), rd, rs, rt, llvm->toString()));
             }
             break;
         }
@@ -126,26 +130,26 @@ void mid_2_mips()
             switch (icmpLLVM->cmpType)
             {
             case LSS: // <
-                manager->addCode(new RTypeMips(SLT_OP, rs, rt, rd, llvm->toString()));
+                manager->addCode(new RTypeMips(SLT_OP, rd, rs, rt, llvm->toString()));
                 break;
             case GRE: // >
-                manager->addCode(new RTypeMips(SLT_OP, rt, rs, rd, llvm->toString()));
+                manager->addCode(new RTypeMips(SLT_OP, rd, rt, rs, llvm->toString()));
                 break;
             case GEQ: // >=
-                manager->addCode(new RTypeMips(SLT_OP, rs, rt, rd, llvm->toString()));
+                manager->addCode(new RTypeMips(SLT_OP, rd, rs, rt, llvm->toString()));
                 manager->addCode(new ITypeMips(XORI_OP, rd, rd, manager->one_inter, ""));
                 break;
             case LEQ: // <=
-                manager->addCode(new RTypeMips(SLT_OP, rt, rs, rd, llvm->toString()));
+                manager->addCode(new RTypeMips(SLT_OP, rd, rt, rs, llvm->toString()));
                 manager->addCode(new ITypeMips(XORI_OP, rd, rd, manager->one_inter, ""));
                 break;
             case EQL: // ==
-                manager->addCode(new RTypeMips(XOR_OP, rs, rt, rd, llvm->toString()));
+                manager->addCode(new RTypeMips(XOR_OP, rd, rs, rt, llvm->toString()));
                 manager->addCode(new ITypeMips(SLTIU_OP, rd, rd, manager->one_inter, "")); // 亦或后的值小于1相等
                 break;
             case NEQ: // !=
-                manager->addCode(new RTypeMips(XOR_OP, rs, rt, rd, llvm->toString()));
-                manager->addCode(new RTypeMips(SLTU_OP, manager->zero, rd, rd, "")); // 亦或后的值大于0不相等
+                manager->addCode(new RTypeMips(XOR_OP, rd, rs, rt, llvm->toString()));
+                manager->addCode(new RTypeMips(SLTU_OP, rd, manager->zero, rd, "")); // 亦或后的值大于0不相等
                 break;
             }
             break;
@@ -155,7 +159,7 @@ void mid_2_mips()
             ZextLLVM *zextLLVM = dynamic_cast<ZextLLVM *>(llvm);
             RegPtr rs = manager->findOccupiedReg(zextLLVM->src, true);
             RegPtr rd = manager->allocTempReg(zextLLVM);
-            manager->addCode(new RTypeMips(ADD_OP, rs, manager->zero, rd, llvm->toString()));
+            manager->addCode(new RTypeMips(ADD_OP, rd, rs, manager->zero, llvm->toString()));
             break;
         }
         case TRUNC_IR:

@@ -6,6 +6,7 @@ struct Mips;
 struct MipsManager;
 struct CodeMips;
 struct DataMips;
+struct AnnotationMips;
 
 struct Mips
 {
@@ -20,7 +21,8 @@ struct Mips
 
     virtual string toString()
     {
-        return annotation.empty() ? "" : "\t#\t" + annotation;
+        string result = annotation.empty() ? "" : ("\t#\t" + annotation);
+        return !annotation.empty() && annotation.at(0) == '#' ? result : result + "\n";
     }
 
     void addAnnotation(string annotation)
@@ -32,7 +34,7 @@ struct Mips
 struct MipsManager
 {
 private:
-    int curStack;      // sp
+    int curStack; // sp
     RegPool tempRegPool = new _RegPool();
     map<LLVM *, RegPtr> occupation;
 
@@ -55,6 +57,7 @@ public:
     void tryReleaseReg(RegPtr reg);
     void addCode(CodeMips *code);
     void addData(DataMips *data);
+    void addAnnotation(AnnotationMips *annotation);
     RegPtr findOccupiedReg(LLVM *llvm, bool needTempReg = false);
     RegPtr allocTempReg(LLVM *llvm);
     RegPtr allocMem(LLVM *llvm, int size);

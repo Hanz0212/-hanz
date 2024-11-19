@@ -3,6 +3,7 @@ enum mips_type
     GLOBAL_DEF_OP,
     GLOBAL_STR_OP,
     LABEL_OP,
+    ANNOTATION_OP,
 
     LOAD_OP,
     STORE_OP,
@@ -12,18 +13,19 @@ enum mips_type
     SUB_OP,
     MULT_OP,
     DIV_OP,
-    SLT_OP, // 小于置1
+    SLT_OP,  // 小于置1
     SLTU_OP, // 无符号小于置1
-    SLL_OP, // 逻辑左移
-    SRA_OP, // 算数右移
+    SLL_OP,  // 逻辑左移
+    SRA_OP,  // 算数右移
     AND_OP,
     OR_OP,
     XOR_OP,
     NOR_OP,
 
     ANDI_OP,
-    LI_OP, // 加载立即数到寄存器
-    XORI_OP, // 亦或立即数
+    LI_OP,    // 加载立即数到寄存器
+    LA_OP,    // 加载地址到寄存器
+    XORI_OP,  // 亦或立即数
     SLTIU_OP, // 无符号小于立即数置1
 
     MFHI_OP,
@@ -35,6 +37,7 @@ const map<mips_type, string> mips_type_2_str = {
     {GLOBAL_STR_OP, "GLOBAL_STR_OP"},
     {LOAD_OP, "LOAD_OP"},
     {STORE_OP, "STORE_OP"},
+    {ANNOTATION_OP, "ANNOTATION_OP"},
 
     {ADD_OP, "ADD_OP"},
     {ADDIU_OP, "ADDIU_OP"},
@@ -52,6 +55,7 @@ const map<mips_type, string> mips_type_2_str = {
 
     {ANDI_OP, "ANDI_OP"},
     {LI_OP, "LI_OP"},
+    {LA_OP, "LA_OP"},
     {XORI_OP, "XORI_OP"},
     {SLTIU_OP, "SLTIU_OP"}};
 
@@ -72,6 +76,7 @@ const map<mips_type, string> mips_type_2_opstr = {
 
     {ANDI_OP, "andi"},
     {LI_OP, "li"},
+    {LA_OP, "la"},
     {XORI_OP, "xori"},
     {SLTIU_OP, "sltiu"},
 
@@ -137,76 +142,84 @@ bool in32Reg(reg_type reg)
 const vector<reg_type> save_reg_types = {
     S0, S1, S2, S3, S4, S5, S6, S7};
 
-string reg_type_2_str(reg_type reg) {  
-    switch (reg) {  
-        case ZERO:  
-            return "$zero";  
-        case AT:  
-            return "$at";  
-        case V0:  
-            return "$v0";  
-        case V1:  
-            return "$v1";  
-        case A0:  
-            return "$a0";  
-        case A1:  
-            return "$a1";  
-        case A2:  
-            return "$a2";  
-        case A3:  
-            return "$a3";  
-        case T0:  
-            return "$t0";  
-        case T1:  
-            return "$t1";  
-        case T2:  
-            return "$t2";  
-        case T3:  
-            return "$t3";  
-        case T4:  
-            return "$t4";  
-        case T5:  
-            return "$t5";  
-        case T6:  
-            return "$t6";  
-        case T7:  
-            return "$t7";  
-        case S0:  
-            return "$s0";  
-        case S1:  
-            return "$s1";  
-        case S2:  
-            return "$s2";  
-        case S3:  
-            return "$s3";  
-        case S4:  
-            return "$s4";  
-        case S5:  
-            return "$s5";  
-        case S6:  
-            return "$s6";  
-        case S7:  
-            return "$s7";  
-        case T8:  
-            return "$t8";  
-        case T9:  
-            return "$t9";  
-        case K0:  
-            return "$k0";  
-        case K1:  
-            return "$k1";  
-        case GP:  
-            return "$gp";  
-        case SP:  
-            return "$sp";  
-        case FP:  
-            return "$fp";  
-        case RA:  
-            return "$ra";  
-        default:  
-            DIE("unknown_register:" + to_string(reg));
-            return "";
-    }  
+string reg_type_2_str(reg_type reg)
+{
+    switch (reg)
+    {
+    case ZERO:
+        return "$zero";
+    case AT:
+        return "$at";
+    case V0:
+        return "$v0";
+    case V1:
+        return "$v1";
+    case A0:
+        return "$a0";
+    case A1:
+        return "$a1";
+    case A2:
+        return "$a2";
+    case A3:
+        return "$a3";
+    case T0:
+        return "$t0";
+    case T1:
+        return "$t1";
+    case T2:
+        return "$t2";
+    case T3:
+        return "$t3";
+    case T4:
+        return "$t4";
+    case T5:
+        return "$t5";
+    case T6:
+        return "$t6";
+    case T7:
+        return "$t7";
+    case S0:
+        return "$s0";
+    case S1:
+        return "$s1";
+    case S2:
+        return "$s2";
+    case S3:
+        return "$s3";
+    case S4:
+        return "$s4";
+    case S5:
+        return "$s5";
+    case S6:
+        return "$s6";
+    case S7:
+        return "$s7";
+    case T8:
+        return "$t8";
+    case T9:
+        return "$t9";
+    case K0:
+        return "$k0";
+    case K1:
+        return "$k1";
+    case GP:
+        return "$gp";
+    case SP:
+        return "$sp";
+    case FP:
+        return "$fp";
+    case RA:
+        return "$ra";
+    case OFFSET:
+        return "$offset";
+    case INTERMEDIATE:
+        return "$intermediate";
+    case LABEL:
+        return "$label";
+    default:
+        DIE("unknown_register:" + to_string(reg));
+        return "";
+    }
 }
 
 // const map<tk_type, >

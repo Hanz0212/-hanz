@@ -12,13 +12,18 @@ void MipsManager::addData(DataMips *data)
     mipsDatas.push_back(data);
 }
 
+void MipsManager::addAnnotation(AnnotationMips *annotation)
+{
+    mipsCodes.push_back(annotation);
+}
+
 void MipsManager::occupy(LLVM *llvm, RegPtr reg)
 {
     tempRegPool->tryOccupy(reg->getType());
     occupation.insert({llvm, reg});
 }
 
-// 保证:局部数组变量一定返回offset，全局数组一定返回label,置true一定返回tempReg
+
 RegPtr MipsManager::findOccupiedReg(LLVM *llvm, bool needTempReg)
 {
     if (occupation.count(llvm) == 0)
@@ -29,21 +34,6 @@ RegPtr MipsManager::findOccupiedReg(LLVM *llvm, bool needTempReg)
     RegPtr reg = occupation.at(llvm);
     if (needTempReg && !in32Reg(reg->getType()))
         reg = load(llvm);
-
-    if (llvm->midType == ALLOCA_IR && reg->getType() != OFFSET &&
-        isArrayType(dynamic_cast<AllocaLLVM *>(llvm)->allocaType))
-    {
-        DIE("in findOccupiedReg: isLocalArray but not return inter");
-    }
-    if (llvm->midType == G_VAR_DEF_IR && reg->getType() != LABEL &&
-        isArrayType(dynamic_cast<GDefLLVM *>(llvm)->GDefType))
-    {
-        DIE("in findOccupiedReg: isGlobalArray but not return label");
-    }
-    if (needTempReg && !in32Reg(reg->getType()))
-    {
-        DIE("in findOccupiedReg: needTempReg but not return tempReg");
-    }
 
     return reg;
 }
@@ -112,7 +102,7 @@ void MipsManager::release(LLVM *llvm)
 void MipsManager::push(LLVM *llvm)
 {
     RegPtr curStack_inter = new OffsetReg(curStack);
-    addCode(new StoreMips(findOccupiedReg(llvm), manager->sp, curStack_inter, "push"));
+    addCode(new StoreMips(findOccupiedReg(llvm), curStack_inter, "#push"));
     release(llvm);
     occupation.insert({llvm, curStack_inter});
     curStack += 4;
@@ -122,7 +112,7 @@ RegPtr MipsManager::load(LLVM *llvm)
 {
     RegPtr reg = getFreeTempReg(llvm);
     RegPtr offset = occupation.at(llvm);
-    addCode(new LoadMips(reg, sp, offset, "reload"));
+    addCode(new LoadMips(reg, offset, "#reload"));
     occupy(llvm, reg);
     return reg;
 }

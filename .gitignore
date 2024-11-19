@@ -241,3 +241,4 @@ src/extracted_files/error/testcase9/ans.txt
 src/extracted_files/error/testcase9/config.json
 src/extracted_files/error/testcase9/in.txt
 src/extracted_files/error/testcase9/testfile.txt
+src/mips.asm
