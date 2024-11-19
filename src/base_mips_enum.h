@@ -13,6 +13,7 @@ enum mips_type
     MULT_OP,
     DIV_OP,
     SLT_OP, // 小于置1
+    SLTU_OP, // 无符号小于置1
     SLL_OP, // 逻辑左移
     SRA_OP, // 算数右移
     AND_OP,
@@ -20,7 +21,10 @@ enum mips_type
     XOR_OP,
     NOR_OP,
 
+    ANDI_OP,
     LI_OP, // 加载立即数到寄存器
+    XORI_OP, // 亦或立即数
+    SLTIU_OP, // 无符号小于立即数置1
 
     MFHI_OP,
     MFLO_OP,
@@ -38,13 +42,18 @@ const map<mips_type, string> mips_type_2_str = {
     {MULT_OP, "MULT_OP"},
     {DIV_OP, "DIV_OP"},
     {SLT_OP, "SLT_OP"},
+    {SLTU_OP, "SLTU_OP"},
     {SLL_OP, "SLL_OP"},
     {SRA_OP, "SRA_OP"},
     {AND_OP, "AND_OP"},
     {OR_OP, "OR_OP"},
     {XOR_OP, "XOR_OP"},
     {NOR_OP, "NOR_OP"},
-    {LI_OP, "LI_OP"},};
+
+    {ANDI_OP, "ANDI_OP"},
+    {LI_OP, "LI_OP"},
+    {XORI_OP, "XORI_OP"},
+    {SLTIU_OP, "SLTIU_OP"}};
 
 const map<mips_type, string> mips_type_2_opstr = {
     {ADD_OP, "add"},
@@ -53,13 +62,18 @@ const map<mips_type, string> mips_type_2_opstr = {
     {MULT_OP, "mult"},
     {DIV_OP, "div"},
     {SLT_OP, "slt"},
+    {SLTU_OP, "sltu"},
     {SLL_OP, "sll"},
     {SRA_OP, "sra"},
     {AND_OP, "ans"},
     {OR_OP, "or"},
     {XOR_OP, "xor"},
     {NOR_OP, "nor"},
+
+    {ANDI_OP, "andi"},
     {LI_OP, "li"},
+    {XORI_OP, "xori"},
+    {SLTIU_OP, "sltiu"},
 
     {MFHI_OP, "mfhi"},
     {MFLO_OP, "mflo"},
@@ -110,11 +124,15 @@ enum reg_type
     SP,
     FP,
     RA,
+    INTERMEDIATE,
+    LABEL,
     OFFSET,
 };
 
-const vector<reg_type> temp_reg_types = {
-    T0, T1, T2, T3, T4, T5, T6, T7, T8, T9};
+bool in32Reg(reg_type reg)
+{
+    return reg < 32;
+}
 
 const vector<reg_type> save_reg_types = {
     S0, S1, S2, S3, S4, S5, S6, S7};
@@ -186,8 +204,8 @@ string reg_type_2_str(reg_type reg) {
         case RA:  
             return "$ra";  
         default:  
-            cout << "unknown_register:" + to_string(reg) << endl;
-            exit(1);
+            DIE("unknown_register:" + to_string(reg));
+            return "";
     }  
 }
 

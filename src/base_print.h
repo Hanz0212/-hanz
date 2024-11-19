@@ -114,16 +114,10 @@ void print_errors()
 void print_mips()
 {
     fout5 << ".data" << endl;
-    for (Mips *mips : manager->mipsCodes)
-    {
-        if (mips->mipsType == GLOBAL_DEF_OP || mips->mipsType == GLOBAL_STR_OP)
-            fout5 << mips->toString() << endl;
-    }
+    for (DataMips *data : manager->mipsDatas)
+        fout5 << data->toString() << endl;
+        
     fout5 << ".text" << endl;
-    for (Mips *mips : manager->mipsCodes)
-    {
-        if (mips->mipsType == GLOBAL_DEF_OP || mips->mipsType == GLOBAL_STR_OP)
-            continue;
-        fout5 << mips->toString() << endl;
-    }
+    for (CodeMips *code : manager->mipsCodes)
+        fout5 << code->toString() << endl;
 }

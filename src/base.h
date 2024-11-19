@@ -23,6 +23,13 @@ ofstream fout5("mips.txt");
 ofstream ferr("error.txt");
 ifstream fin("testfile.txt");
 
+void DIE(string text)
+{
+    cout << "D I E ! ! !" << endl;
+    cout << text << endl;
+    exit(1);
+}
+
 #include "base_lexer_declare.h"
 #include "base_syntax_declare.h"
 #include "base_symbol_declare.h"
@@ -31,9 +38,9 @@ ifstream fin("testfile.txt");
 #include "base_mips_enum.h"
 #include "base_mips_Reg.h"
 #include "base_mips_declare.h"
-#include "base_mips_Mips.h"
 #include "base_mips_DataMips.h"
 #include "base_mips_CodeMips.h"
+#include "base_mips_Mips.h"
 #include "base_error_declare.h"
 
 #include "base_error.h"

@@ -1,4 +1,4 @@
-struct GlobalMips : Mips
+struct DataMips : Mips
 {
     // 全局变量
     var_type varType;
@@ -9,8 +9,8 @@ struct GlobalMips : Mips
     int loc;
     string str;
 
-    GlobalMips(var_type varType, string varName, vector<int> varInitVals, int varLength,
-               int loc, string str, mips_type mipsType) : Mips(mipsType)
+    DataMips(var_type varType, string varName, vector<int> varInitVals, int varLength,
+               int loc, string str, mips_type mipsType) : Mips(mipsType, "")
     {
         this->varType = varType;
         this->varName = varName;
@@ -40,11 +40,11 @@ private:
     }
 };
 
-struct GlobalDefMips : GlobalMips
+struct GlobalDefMips : DataMips
 {
     // 只声明全局的非const数组变量和const数组，不声明const变量
     GlobalDefMips(var_type varType, string varName, int varLength, vector<int> varInitVals)
-        : GlobalMips(varType, varName, varInitVals, varLength, -1, "", GLOBAL_DEF_OP) {}
+        : DataMips(varType, varName, varInitVals, varLength, -1, "", GLOBAL_DEF_OP) {}
 
     string toString() override
     {
@@ -69,10 +69,10 @@ struct GlobalDefMips : GlobalMips
     }
 };
 
-struct GlobalStrMips : GlobalMips
+struct GlobalStrMips : DataMips
 {
     GlobalStrMips(int loc, string str)
-        : GlobalMips(var_null, "", vector<int>(), -1, loc, str, GLOBAL_STR_OP) {}
+        : DataMips(var_null, "", vector<int>(), -1, loc, str, GLOBAL_STR_OP) {}
 
     string toString() override
     {

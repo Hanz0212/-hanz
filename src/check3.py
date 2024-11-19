@@ -9,7 +9,7 @@ import shutil
 import subprocess
 
 zip_name = "2024语义分析公共测试程序库"
-work_path = "D:\c++_code\COMPILER\code\src\\"
+work_path = "D:\c++_code\COMPILER\-hanz\src\\"
 src_path = work_path
 zip_path = os.path.join(work_path, zip_name + '.zip')
 extract_folder = os.path.join(work_path, 'extracted_files')
@@ -85,9 +85,9 @@ def check_cases_at(dir_path):
         curcase_path = os.path.join(dir_path, entry)
         # os.chdir(curcase_path)
         print(f'当前测试点目录：{curcase_path}')
-        if curcase_path.endswith('A\\testcase10') \
-            or curcase_path.endswith('A\\testcase7'):
-            continue
+        # if curcase_path.endswith('A\\testcase10') \
+            # or curcase_path.endswith('A\\testcase7'):
+            # continue
         build_work_place()
         print(f'构建工作目录成功')
         check_compiler()
