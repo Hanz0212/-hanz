@@ -1,13 +1,9 @@
-enum mips_type
-{
-    GLOBAL_DEF_OP,
-    GLOBAL_STR_OP,
-};
 
-const map<mips_type, string> mips_type_2_str = {
-    {GLOBAL_DEF_OP, "GLOBAL_DEF_OP"},
-    {GLOBAL_STR_OP, "GLOBAL_STR_OP"},
-};
+struct RegStruct;
+using RegPtr = RegStruct *;
+struct OffsetReg;
+struct Mips;
+struct MipsManager;
 
 struct Mips
 {
@@ -24,92 +20,30 @@ struct Mips
     }
 };
 
-struct GlobalDefMips : Mips
+struct MipsManager
 {
-    var_type varType;
-    string varName;
-    vector<int> varInitVals;
-    int varLength;
-    // 只声明全局的非const数组变量和const数组，不声明const变量
-    GlobalDefMips(var_type varType, string varName, int varLength, vector<int> varInitVals) : Mips(GLOBAL_DEF_OP)
-    {
-        this->varType = varType;
-        this->varName = varName;
-        this->varLength = varLength;
-        this->varInitVals = varInitVals;
-    }
+private:
+    int curStack;      // sp
+    int tempCount = 0; // 临时寄存器分配号，每次申请都+1 mod n
+    int TEMPREGCNT = temp_reg_types.size();
+    map<reg_type, RegPtr> tempRegPool;
+    map<LLVM *, RegPtr> occupation;
 
-    string toString() override
-    {
-        string initValTk;
-        string lenTk = isIntType(varType) ? "word" : "byte";
-        for (int val : varInitVals)
-            initValTk += to_string(val) + ", ";
-        if (!initValTk.empty())
-        {
-            initValTk.pop_back();
-            initValTk.pop_back();
-        }
-        initValTk = initValTk.empty() ? "" : varName.size() > 3 ? "\n\t\t." + lenTk + " " + initValTk
-                                                                : "\t." + lenTk + " " + initValTk;
 
-        string initZeroTk;
-        if (varInitVals.size() < varLength)
-            initZeroTk = join_str({initValTk.empty() ? "\t.space" : "\n\t\t.space",
-                                   to_string((varLength - varInitVals.size()) * (isIntType(varType) ? 4 : 1))});
+public:
+    RegPtr zero = new RegStruct(ZERO);
+    RegPtr sp = new RegStruct(SP);
+    vector<Mips *> mipsCodes;
 
-        return join_str({"\t" + varName + ":" + initValTk, initZeroTk});
-    }
-};
+    MipsManager();
+    void addCode(Mips *code);
+    void occupy(LLVM *llvm, RegPtr reg);
+    RegPtr findOccupiedReg(LLVM *llvm);
+    RegPtr getFreeTempReg(LLVM *llvm);
+    RegPtr allocTempReg(LLVM *llvm);
+    RegPtr allocMem(LLVM *llvm, int size);
+    void release(LLVM *llvm);
+    void push(LLVM *llvm);
 
-struct GlobalStrMips : Mips
-{
-    int loc;
-    string str;
+} g_mipsManager, *manager = &g_mipsManager;
 
-    GlobalStrMips(int loc, string str) : Mips(GLOBAL_STR_OP)
-    {
-        this->loc = loc;
-        string tstr;
-        for (int i = 0; i < str.length(); i++)
-        {
-            if (str.at(i) == '\\' && i + 2 < str.length() && str.at(i + 1) == '0' && str.at(i + 2) == 'A')
-            {
-                tstr += "\\n";
-                i += 2;
-            }
-            else
-            {
-                tstr += str.at(i);
-            }
-        }
-        this->str = tstr;
-    }    
-
-    string toString() override
-    {
-        return join_str({"\t.str" + to_string(loc)+":\t"+".asciiz", "\"" + str + "\""});
-    }
-};
-
-struct RTypeMips : Mips
-{
-};
-
-struct StoreMips : Mips
-{
-};
-
-struct LoadMips : Mips
-{
-};
-
-struct BTypeMips : Mips
-{
-};
-
-struct JTypeMips : Mips
-{
-};
-
-vector<Mips *> mipsCodes;

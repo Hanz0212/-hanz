@@ -25,31 +25,6 @@ void del_after_br_in_block()
     }
 }
 
-// void del_after_ret_in_block()
-// {
-//     /*
-//     删除ret后面的死代码 如
-//     ret i32 1
-//     br label %7
-//     */
-//     int len = midCodes.size();
-//     for (int i = 0; i < len; i++)
-//     {
-//         LLVM *llvm = midCodes[i];
-//         if (llvm->midType == RET_IR)
-//         {
-//             i++;
-//             llvm = midCodes[i];
-//             for (; i < len && llvm->midType != LABEL_IR; )
-//             {
-//                 midCodes.erase(midCodes.begin() + i);
-//                 llvm = midCodes[i];
-//                 len--;
-//             }
-//             i--;
-//         }
-//     }
-// }
 
 // 删除空块
 void del_empty_block()
@@ -91,73 +66,7 @@ void optimize_mid()
 {
     del_after_br_in_block();
     del_empty_block();
+    // 待优化
+    // 只使用lw和sw，当需要char变量时，lw出来，需要另一个char时如果恰好也在这个字节中，可以直接移位
 }
 
-
-
-/*
-
-// 乘除模表达式 MulExp → UnaryExp | MulExp ('*' | '/' | '%') UnaryExp
-LLVM *generate_MulExp(Node *root)
-{
-    LLVM *result = NULL;
-    int sum = 1, flag = 0;
-    bool sumFirst = false; // 默认最后sum是op1
-    tk_type op, init_op = Undefined;
-    LLVM *llvm = generate_UnaryExp(root->GetFirstChild());
-
-    if (llvm->midType == CONST_IR)
-    {
-        sumFirst = true;
-        sum = dynamic_cast<ConstLLVM *>(llvm)->val;
-        flag = 1;
-    }
-    else
-    {
-        result = llvm;
-    }
-
-    for (int i = 1; i < root->childs.size(); i += 2)
-    {
-        op = root->GetChildAt(i)->token->type;
-        Node *child = root->GetChildAt(i + 1);
-        LLVM *llvm = generate_UnaryExp(child);
-        if (init_op == Undefined && sumFirst != (llvm->midType == CONST_IR))
-            init_op = op;
-
-        if (llvm->midType == CONST_IR)
-        {
-            if (flag == 0)
-            {
-                sum = dynamic_cast<ConstLLVM *>(llvm)->val;
-                flag = 1;
-            }
-            else
-                sum = cal_2op(op, sum, dynamic_cast<ConstLLVM *>(llvm)->val);
-        }
-        else
-        {
-            if (result == NULL)
-                result = llvm;
-            else
-                result = generate_midCode(new RTypeLLVM(tk_2_mid[op], result, llvm));
-        }
-    }
-
-    if (result == NULL)
-    {
-        return new ConstLLVM(sum);
-    }
-    else if (sum == 1 && (init_op == MULT || init_op == DIV) || init_op == Undefined)
-    {
-        return result;
-    }
-    else
-    {
-        if (sumFirst)
-            return generate_midCode(new RTypeLLVM(tk_2_mid[init_op], new ConstLLVM(sum), result));
-        else
-            return generate_midCode(new RTypeLLVM(tk_2_mid[init_op], result, new ConstLLVM(sum)));
-    }
-}
-*/

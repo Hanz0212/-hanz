@@ -923,7 +923,6 @@ void generate_LAndExp(Node *root, LLVM *trueLabel, LLVM *falseLabel)
         }
         Node *child = root->GetChildAt(i);
         LLVM *cmp = generate_EqExp(child);
-        /*todo*/
         generate_midCode(new BrLLVM(generate_midCode(new TruncLLVM(cmp, "i1")), tLabel, falseLabel));
         if (tLabel != trueLabel)
             generate_midCode(tLabel);

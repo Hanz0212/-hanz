@@ -28,7 +28,12 @@ ifstream fin("testfile.txt");
 #include "base_symbol_declare.h"
 #include "base_cal_declare.h"
 #include "base_mid_declare.h"
+#include "base_mips_enum.h"
+#include "base_mips_Reg.h"
 #include "base_mips_declare.h"
+#include "base_mips_Mips.h"
+#include "base_mips_DataMips.h"
+#include "base_mips_CodeMips.h"
 #include "base_error_declare.h"
 
 #include "base_error.h"

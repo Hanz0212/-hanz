@@ -332,13 +332,15 @@ struct AllocaLLVM : LLVM
 {
     var_type allocaType;
     int length;
+    bool isfuncArrayParam = false;
     LLVM *funcFParam; // 辅助标识allocatype
     // 有返回值 0个op
     AllocaLLVM(LLVM *funcFParam) : LLVM(ALLOCA_IR) // 函数形参
     {
         this->allocaType = dynamic_cast<FuncFParamLLVM *>(funcFParam)->paramType;
         this->funcFParam = funcFParam;
-        this->length = -1;
+        this->length = 1;
+        this->isfuncArrayParam = true;
     }
 
     AllocaLLVM(var_type allocaType) : LLVM(ALLOCA_IR)
@@ -357,7 +359,7 @@ struct AllocaLLVM : LLVM
 
     bool isFuncArrayParam()
     {
-        return this->length == -1;
+        return this->isfuncArrayParam;
     }
 
     void refillNum() override {}
