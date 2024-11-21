@@ -35,39 +35,38 @@ enum mid_type
     mid_null
 };
 
-const map<mid_type, string> mid_type_2_str = {  
-    {ADD_IR, "ADD_IR"},  
-    {SUB_IR, "SUB_IR"},  
-    {MUL_IR, "MUL_IR"},  
-    {SDIV_IR, "SDIV_IR"}, // 有符号除法  
-    {SREM_IR, "SREM_IR"}, // 有符号取余  
-    {ICMP_IR, "ICMP_IR"}, // 比较指令  
-    {AND_IR, "AND_IR"},  
-    {OR_IR, "OR_IR"},  
-    {CALL_IR, "CALL_IR"},   // 函数调用  
-    {ALLOCA_IR, "ALLOCA_IR"}, // 分配内存  
-    {LOAD_IR, "LOAD_IR"},  
-    {STORE_IR, "STORE_IR"},  
-    {GETELEMENTPTR_IR, "GETELEMENTPTR_IR"}, // 计算目标元素的位置  
-    {PHI_IR, "PHI_IR"},           // 选择控制流  
-    {ZEXT_IR, "ZEXT_IR"},          // 无符号扩展 语法规定了char>0  
-    {TRUNC_IR, "TRUNC_IR"},         // 截断数据  
-    {BR_IR, "BR_IR"},            // 改变控制流  
-    {RET_IR, "RET_IR"},           // 退出当前函数，并返回值  
+const map<mid_type, string> mid_type_2_str = {
+    {ADD_IR, "ADD_IR"},
+    {SUB_IR, "SUB_IR"},
+    {MUL_IR, "MUL_IR"},
+    {SDIV_IR, "SDIV_IR"}, // 有符号除法
+    {SREM_IR, "SREM_IR"}, // 有符号取余
+    {ICMP_IR, "ICMP_IR"}, // 比较指令
+    {AND_IR, "AND_IR"},
+    {OR_IR, "OR_IR"},
+    {CALL_IR, "CALL_IR"},     // 函数调用
+    {ALLOCA_IR, "ALLOCA_IR"}, // 分配内存
+    {LOAD_IR, "LOAD_IR"},
+    {STORE_IR, "STORE_IR"},
+    {GETELEMENTPTR_IR, "GETELEMENTPTR_IR"}, // 计算目标元素的位置
+    {PHI_IR, "PHI_IR"},                     // 选择控制流
+    {ZEXT_IR, "ZEXT_IR"},                   // 无符号扩展 语法规定了char>0
+    {TRUNC_IR, "TRUNC_IR"},                 // 截断数据
+    {BR_IR, "BR_IR"},                       // 改变控制流
+    {RET_IR, "RET_IR"},                     // 退出当前函数，并返回值
 
-    {LABEL_IR, "LABEL_IR"}, // label  
+    {LABEL_IR, "LABEL_IR"}, // label
 
-    {G_VAR_DEF_IR, "G_VAR_DEF_IR"},  // 全局变量声明  
-    {G_FUNC_DEF_IR, "G_FUNC_DEF_IR"}, // 函数声明  
+    {G_VAR_DEF_IR, "G_VAR_DEF_IR"},   // 全局变量声明
+    {G_FUNC_DEF_IR, "G_FUNC_DEF_IR"}, // 函数声明
 
-    {G_STR, "G_STR"}, // 用于putstr  
+    {G_STR, "G_STR"}, // 用于putstr
 
-    {FUNC_PARAM_IR, "FUNC_PARAM_IR"}, // 函数形参标志  
-    {FUNC_END_IR, "FUNC_END_IR"},   // 函数结束标志  
+    {FUNC_PARAM_IR, "FUNC_PARAM_IR"}, // 函数形参标志
+    {FUNC_END_IR, "FUNC_END_IR"},     // 函数结束标志
 
-    {CONST_IR, "CONST_IR"}, // 单独一个常数 不可单独作为指令 用于传参  
-    {mid_null, "mid_null"}  
-};  
+    {CONST_IR, "CONST_IR"}, // 单独一个常数 不可单独作为指令 用于传参
+    {mid_null, "mid_null"}};
 
 set<mid_type> retMidTypes = {
     ADD_IR,
@@ -120,6 +119,30 @@ const map<tk_type, string> tk_2_cmp = {
     {sop_2_tk_type.at('>'), "sgt"},
     {sop_2_tk_type.at('<'), "slt"},
 };
+
+int mid_cal_2op(mid_type type, int op1, int op2)
+{
+    switch (type)
+    {
+    case MUL_IR:
+        return op1 * op2;
+    case SDIV_IR:
+        return op1 / op2;
+    case SREM_IR:
+        return op1 % op2;
+    case ADD_IR:
+        return op1 + op2;
+    case SUB_IR:
+        return op1 - op2;
+    case AND_IR:
+        return op1 & op2;
+    case OR_IR:
+        return op1 | op2;
+    default:
+        cout << "in mid_cal_2op: unknwon op type!: " << mid_type_2_str.at(type) << endl;
+        exit(1);
+    }
+}
 
 bool isRType(mid_type type)
 {
@@ -367,7 +390,7 @@ struct AllocaLLVM : LLVM
     var_type allocaType;
     int length;
     bool isfuncArrayParam = false;
-    LLVM *funcFParam; // 辅助标识allocatype
+    LLVM *funcFParam = NULL; // 辅助标识allocatype
     // 有返回值 0个op
     AllocaLLVM(LLVM *funcFParam) : LLVM(ALLOCA_IR) // 函数形参
     {

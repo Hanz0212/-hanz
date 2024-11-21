@@ -1,4 +1,4 @@
-int cal_2op(tk_type type, int op1, int op2)
+int tk_cal_2op(tk_type type, int op1, int op2)
 {
     switch (type)
     {
@@ -25,7 +25,7 @@ int cal_2op(tk_type type, int op1, int op2)
     case GRE:
         return op1 > op2;
     default:
-        cout << "in cal_2op: unknwon op type!: " << tk_type_2_str.at(type) << endl;
+        cout << "in tk_cal_2op: unknwon op type!: " << tk_type_2_str.at(type) << endl;
         exit(1);
     }
 }

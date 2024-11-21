@@ -159,4 +159,4 @@ const map<string, tk_type> keyword_2_tk_type = {
     {"void", VOIDTK}};
 
 vector<Token *> tokens;
-int cal_2op(tk_type type, int op1, int op2);
+int tk_cal_2op(tk_type type, int op1, int op2);

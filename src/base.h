@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <cstring>
 #include <fstream>
-#include <memory> 
+#include <memory>
 using namespace std;
 int DEBUG = 0;
 int DEBUG2 = 0;
@@ -19,16 +19,12 @@ ofstream fout2("parser.txt");
 ofstream fout3("symbol.txt");
 // ofstream fout4("mid.ll");
 ofstream fout4("llvm_ir.txt");
-ofstream fout5("mips.asm");
+// ofstream fout5("mips.asm");
+ofstream fout5("mips.txt");
 ofstream ferr("error.txt");
 ifstream fin("testfile.txt");
 
-void DIE(string text)
-{
-    cout << "D I E ! ! !" << endl;
-    cout << text << endl;
-    exit(1);
-}
+void DIE(string text);
 
 #include "base_lexer_declare.h"
 #include "base_syntax_declare.h"
@@ -53,3 +49,19 @@ void DIE(string text)
 
 #include "base_print.h"
 #include "base_optimize_mid.h"
+
+bool inDie = false;
+void DIE(string text)
+{
+    if (inDie)
+    {
+        cout << "D I E AGAIN! ! !" << endl;
+        cout << text << endl;
+        exit(1);
+    }
+    inDie = true;
+    cout << "D I E ! ! !" << endl;
+    cout << text << endl;
+    print_mips();
+    exit(1);
+}

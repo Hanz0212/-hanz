@@ -22,6 +22,13 @@ enum mips_type
     XOR_OP,
     NOR_OP,
 
+    JAL_OP,
+    J_OP,
+    JR_OP,
+    BGTZ_OP, // 大于零转移
+    NOP_OP,
+    SYSCALL_OP,
+
     ANDI_OP,
     LI_OP,    // 加载立即数到寄存器
     LA_OP,    // 加载地址到寄存器
@@ -53,6 +60,13 @@ const map<mips_type, string> mips_type_2_str = {
     {XOR_OP, "XOR_OP"},
     {NOR_OP, "NOR_OP"},
 
+    {JAL_OP, "JAL_OP"},
+    {J_OP, "J_OP"},
+    {JR_OP, "JR_OP"},
+    {BGTZ_OP, "BGTZ_OP"},
+    {NOP_OP, "NOP_OP"},
+    {SYSCALL_OP, "SYSCALL_OP"},
+
     {ANDI_OP, "ANDI_OP"},
     {LI_OP, "LI_OP"},
     {LA_OP, "LA_OP"},
@@ -73,6 +87,13 @@ const map<mips_type, string> mips_type_2_opstr = {
     {OR_OP, "or"},
     {XOR_OP, "xor"},
     {NOR_OP, "nor"},
+
+    {JAL_OP, "jal"},
+    {J_OP, "j"},
+    {JR_OP, "jr"},
+    {BGTZ_OP, "bgtz"},
+    {NOP_OP, "nop"},
+    {SYSCALL_OP, "syscall"},
 
     {ANDI_OP, "andi"},
     {LI_OP, "li"},

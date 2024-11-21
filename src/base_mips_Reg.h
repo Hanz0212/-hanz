@@ -1,3 +1,5 @@
+class MipsManager;
+
 typedef struct RegStruct
 {
     reg_type regType;
@@ -77,6 +79,7 @@ private:
         T0, T1, T2, T3, T4, T5, T6, T7, T8, T9};
     int index = 0; // 临时寄存器分配号，每次申请都+1 mod n
 
+public:
     bool inRegTypes(reg_type type)
     {
         for (reg_type regType : regTypes)
@@ -89,7 +92,6 @@ private:
         return false;
     }
 
-public:
     int POOLSIZE = regTypes.size();
 
     _RegPool()
@@ -118,7 +120,7 @@ public:
         if (inRegTypes(reg->getType()))
         {
             if (isFree(reg->getType()))
-                DIE("already released !:" + reg_type_2_str(reg->getType()));
+                DIE("in regPool tryRelease :already released !:" + reg_type_2_str(reg->getType()));
             regPool.insert({reg->getType(), reg});
         }
     }

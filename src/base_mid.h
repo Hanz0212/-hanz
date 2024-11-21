@@ -149,8 +149,16 @@ void generate_VarDef(Node *root, bool isGlobal)
             {
                 Node *firstChild = initValNode->GetFirstChild();
                 LLVM *exp = generate_Exp(firstChild);
-                if (!isIntType(symbol->type) && exp->midType != CONST_IR) // 向char赋值 trunc
-                    exp = generate_midCode(new TruncLLVM(exp));
+                if (!isIntType(symbol->type)) // 向char赋值 trunc
+                {
+                    if (exp->midType != CONST_IR)
+                        exp = generate_midCode(new TruncLLVM(exp));
+                    else
+                    {
+                        int val = dynamic_cast<ConstLLVM *>(exp)->val & 0xff;
+                        exp = new ConstLLVM(val);
+                    }
+                }
                 LLVM *store = generate_midCode(new StoreLLVM(symbol->type, exp, alloca));
             }
         }
@@ -193,8 +201,17 @@ void generate_VarDef(Node *root, bool isGlobal)
                                                                              alloca,
                                                                              new ConstLLVM(i)));
                         LLVM *exp = generate_Exp(child);
-                        if (!isIntType(symbol->type) && exp->midType != CONST_IR) // 向char赋值 trunc
-                            exp = generate_midCode(new TruncLLVM(exp));
+
+                        if (!isIntType(symbol->type)) // 向char赋值 trunc
+                        {
+                            if (exp->midType != CONST_IR)
+                                exp = generate_midCode(new TruncLLVM(exp));
+                            else
+                            {
+                                int val = dynamic_cast<ConstLLVM *>(exp)->val & 0xff;
+                                exp = new ConstLLVM(val);
+                            }
+                        }
                         generate_midCode(new StoreLLVM(symbol->type, exp, array));
                     }
                 }
@@ -290,9 +307,16 @@ bool generate_Stmt(Node *root)
             cout << "in generate_stmt: gen LVal failed!!" << endl;
             exit(1);
         }
-
-        if (!isIntType(symbol->type) && exp->midType != CONST_IR) // 向char赋值 trunc
-            exp = generate_midCode(new TruncLLVM(exp));
+        if (!isIntType(symbol->type)) // 向char赋值 trunc
+        {
+            if (exp->midType != CONST_IR)
+                exp = generate_midCode(new TruncLLVM(exp));
+            else
+            {
+                int val = dynamic_cast<ConstLLVM *>(exp)->val & 0xff;
+                exp = new ConstLLVM(val);
+            }
+        }
         generate_midCode(new StoreLLVM(symbol->type, exp, des));
     }
     // 'return' [Exp] ';'
@@ -303,8 +327,16 @@ bool generate_Stmt(Node *root)
             brkLabels.clear();
             ctnLabels.clear();
             LLVM *exp = generate_Exp(root->GetChildAt(1));
-            if (exp->midType != CONST_IR && !isIntType(curFuncType))
-                exp = generate_midCode(new TruncLLVM(exp));
+            if (!isIntType(curFuncType)) // 向char赋值 trunc
+            {
+                if (exp->midType != CONST_IR)
+                    exp = generate_midCode(new TruncLLVM(exp));
+                else
+                {
+                    int val = dynamic_cast<ConstLLVM *>(exp)->val & 0xff;
+                    exp = new ConstLLVM(val);
+                }
+            }
             generate_midCode(new StoreLLVM(curFuncType, exp, curFuncReturnVar));
         }
         generate_midCode(new BrLLVM(curFuncReturnLabel));
@@ -481,8 +513,16 @@ void generate_ForStmt(Node *root)
     Symbol *symbol = find_symbol(firstChild->GetFirstChild()->token);
     LLVM *des = generate_stmt_LVal(firstChild);
     LLVM *exp = generate_Exp(root->GetChildAt(2));
-    if (!isIntType(symbol->type) && exp->midType != CONST_IR) // 向char赋值 trunc
-        exp = generate_midCode(new TruncLLVM(exp));
+    if (!isIntType(symbol->type)) // 向char赋值 trunc
+    {
+        if (exp->midType != CONST_IR)
+            exp = generate_midCode(new TruncLLVM(exp));
+        else
+        {
+            int val = dynamic_cast<ConstLLVM *>(exp)->val & 0xff;
+            exp = new ConstLLVM(val);
+        }
+    }
     generate_midCode(new StoreLLVM(symbol->type, exp, des));
 }
 
@@ -502,13 +542,23 @@ void generate_FuncDef(Node *root)
     curFuncReturnVar = NULL;
     if (curFuncType != VoidFunc) // 用来存返回值
         curFuncReturnVar = generate_midCode(new AllocaLLVM(curFuncType == IntFunc ? Int : Char));
+
+    vector<LLVM *> tempList1;
+    vector<LLVM *> tempList2;
     for (int i = 0; i < funcFParams.size(); i++)
     {
         var_type type = funcFParams.at(i)->type;
         LLVM *funcFParam = new FuncFParamLLVM(type, i);
         LLVM *alloca = generate_midCode(new AllocaLLVM(funcFParam));
         syb_2_llvm_insert(funcFParams.at(i), alloca);
-        generate_midCode(new StoreLLVM(type, funcFParam, alloca));
+        tempList1.push_back(funcFParam);
+        tempList2.push_back(alloca);
+        // generate_midCode(new StoreLLVM(type, funcFParam, alloca));
+    }
+    for (int i = 0; i < funcFParams.size(); i++)
+    {
+        var_type type = funcFParams.at(i)->type;
+        generate_midCode(new StoreLLVM(type, tempList1.at(i), tempList2.at(i)));
     }
     curScope = fatherScope.at(curScope); // 更新当亲的scope
 
@@ -692,8 +742,17 @@ vector<LLVM *> generate_FuncRParams(Node *root, vector<Symbol *> paramSymbols)
         if (child->type == Exp)
         {
             LLVM *exp = generate_Exp(child);
-            if (!isIntType(paramSymbols.at(i)->type) && !isArrayType(paramSymbols.at(i)->type))
-                exp = generate_midCode(new TruncLLVM(exp));
+
+            if (!isIntType(paramSymbols.at(i)->type) && !isArrayType(paramSymbols.at(i)->type)) // 向char赋值 trunc
+            {
+                if (exp->midType != CONST_IR)
+                    exp = generate_midCode(new TruncLLVM(exp));
+                else
+                {
+                    int val = dynamic_cast<ConstLLVM *>(exp)->val & 0xff;
+                    exp = new ConstLLVM(val);
+                }
+            }
             FuncRParams.push_back(exp);
             i++;
         }
@@ -712,7 +771,7 @@ LLVM *generate_MulExp(Node *root)
         Node *child = root->GetChildAt(i + 1);
         LLVM *llvm = generate_UnaryExp(child);
         if (result->midType == CONST_IR && llvm->midType == CONST_IR)
-            result = new ConstLLVM(cal_2op(op, dynamic_cast<ConstLLVM *>(result)->val, dynamic_cast<ConstLLVM *>(llvm)->val));
+            result = new ConstLLVM(tk_cal_2op(op, dynamic_cast<ConstLLVM *>(result)->val, dynamic_cast<ConstLLVM *>(llvm)->val));
         else
             result = generate_midCode(new RTypeLLVM(tk_2_mid.at(op), result, llvm));
     }
@@ -757,7 +816,7 @@ LLVM *generate_AddExp(Node *root)
                 flag = 1;
             }
             else
-                sum = cal_2op(op, sum, dynamic_cast<ConstLLVM *>(llvm)->val);
+                sum = tk_cal_2op(op, sum, dynamic_cast<ConstLLVM *>(llvm)->val);
         }
         else
         {
@@ -826,7 +885,7 @@ LLVM *generate_RelExp(Node *root)
                 flag = 1;
             }
             else
-                sum = cal_2op(op, sum, dynamic_cast<ConstLLVM *>(llvm)->val);
+                sum = tk_cal_2op(op, sum, dynamic_cast<ConstLLVM *>(llvm)->val);
         }
         else
         {
@@ -883,7 +942,7 @@ LLVM *generate_EqExp(Node *root)
                 flag = 1;
             }
             else
-                sum = cal_2op(op, sum, dynamic_cast<ConstLLVM *>(llvm)->val);
+                sum = tk_cal_2op(op, sum, dynamic_cast<ConstLLVM *>(llvm)->val);
         }
         else
         {

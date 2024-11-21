@@ -116,7 +116,7 @@ long long cal_AddExp(Node *root)
     for (int i = 0; i < len; i += 2)
     {
         Node *child = root->GetChildAt(i);
-        result = cal_2op(op, result, cal_MulExp(child));
+        result = tk_cal_2op(op, result, cal_MulExp(child));
         if (i + 1 < len)
             op = root->GetChildAt(i + 1)->token->type;
     }
@@ -130,7 +130,7 @@ long long cal_MulExp(Node *root)
     for (int i = 0; i < len; i += 2)
     {
         Node *child = root->GetChildAt(i);
-        result = cal_2op(op, result, cal_UnaryExp(child));
+        result = tk_cal_2op(op, result, cal_UnaryExp(child));
         if (i + 1 < len)
             op = root->GetChildAt(i + 1)->token->type;
     }

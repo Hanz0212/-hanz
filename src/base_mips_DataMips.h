@@ -7,7 +7,7 @@ struct DataMips : Mips
     int varLength;
     // 字符串
     int loc;
-    string str;
+    string str; // asciiz
 
     DataMips(var_type varType, string varName, vector<int> varInitVals, int varLength,
                int loc, string str, mips_type mipsType) : Mips(mipsType, "")
@@ -76,7 +76,7 @@ struct GlobalStrMips : DataMips
 
     string toString() override
     {
-        return "\t" + join_str({".str" + to_string(loc) + ":\t" + ".asciiz", "\"" + str + "\""});
+        return "\t" + join_str({"JHZSTR" + to_string(loc) + ":\t" + ".asciiz", "\"" + str + "\""});
     }
 };
 

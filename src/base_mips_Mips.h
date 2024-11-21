@@ -7,9 +7,54 @@ void MipsManager::addCode(CodeMips *code)
     mipsCodes.push_back(code);
 }
 
+// 将一个数字/寄存器/offset 的值给到另一个寄存器
+void MipsManager::addCode_move(RegPtr des, LLVM *llvm, string annotation)
+{
+    RegPtr src;
+    if (llvm->midType == CONST_IR)
+        src = new IntermediateReg(dynamic_cast<ConstLLVM *>(llvm)->val);
+    else
+        src = findOccupiedReg(llvm, true);
+
+    if (!in32Reg(des->getType()) || src->getType() != INTERMEDIATE && !in32Reg(src->getType()))
+        DIE("eror type in addCode_move: <" + reg_type_2_str(des->getType()) + "," + reg_type_2_str(src->getType()) + ">");
+
+    if (in32Reg(src->getType()))
+        mipsCodes.push_back(new ITypeMips(ADDIU_OP, des, src, zero_inter, annotation));
+    else if (src->getType() == INTERMEDIATE)
+        mipsCodes.push_back(new LiMips(des, src, annotation));
+}
+
 void MipsManager::addData(DataMips *data)
 {
     mipsDatas.push_back(data);
+}
+
+RegPtr MipsManager::addFunc(string funcName, RegPtr func)
+{
+    funcRegs.insert({funcName, func});
+    return func;
+}
+
+RegPtr MipsManager::findFunc(string funcName)
+{
+    if (funcRegs.find(funcName) == funcRegs.end())
+        DIE("error funcName cant find func! :" + funcName);
+    return funcRegs.at(funcName);
+}
+
+RegPtr MipsManager::addLabel(string labelName, RegPtr label)
+{
+    labelRegs.insert({labelName, label});
+    return label;
+}
+
+// manager->curFuncName + labelLLVM->returnTk
+RegPtr MipsManager::findLabel(string labelName)
+{
+    if (labelRegs.find(labelName) == labelRegs.end())
+        DIE("error funcName cant find label! :" + labelName);
+    return labelRegs.at(labelName);
 }
 
 void MipsManager::addAnnotation(AnnotationMips *annotation)
@@ -17,15 +62,21 @@ void MipsManager::addAnnotation(AnnotationMips *annotation)
     mipsCodes.push_back(annotation);
 }
 
+// 建立映射，若为临时寄存器，从pool删除
 void MipsManager::occupy(LLVM *llvm, RegPtr reg)
 {
     tempRegPool->tryOccupy(reg->getType());
+    // 之前建立过和offset的映射 被push后又load出来，需要删除之前映射，再和寄存器建立映射
+    if (occupation.find(llvm) != occupation.end())
+        occupation.erase(llvm);
     occupation.insert({llvm, reg});
 }
 
-
 RegPtr MipsManager::findOccupiedReg(LLVM *llvm, bool needTempReg)
 {
+    if (llvm->midType == G_VAR_DEF_IR)
+        return findLabel(dynamic_cast<GDefLLVM *>(llvm)->varName);
+
     if (occupation.count(llvm) == 0)
     {
         DIE("findOccupiedReg failed !!\nmidType: " + mid_type_2_str.at(llvm->midType));
@@ -33,7 +84,10 @@ RegPtr MipsManager::findOccupiedReg(LLVM *llvm, bool needTempReg)
 
     RegPtr reg = occupation.at(llvm);
     if (needTempReg && !in32Reg(reg->getType()))
+    {
+        cout << "in load" << endl;
         reg = load(llvm);
+    }
 
     return reg;
 }
@@ -77,13 +131,8 @@ RegPtr MipsManager::allocMem(LLVM *llvm, int size)
 {
     RegPtr reg = new OffsetReg(curStack);
     occupy(llvm, reg);
-    curStack += size * 4;
+    curStack -= size * 4;
     return reg;
-}
-// 若regType是寄存器，则release，否则无事发生
-void MipsManager::tryReleaseReg(RegPtr reg)
-{
-    tempRegPool->tryRelease(reg);
 }
 
 // 释放llvm对应的reg，解除配对，恢复寄存器池
@@ -105,14 +154,86 @@ void MipsManager::push(LLVM *llvm)
     addCode(new StoreMips(findOccupiedReg(llvm), curStack_inter, "#push"));
     release(llvm);
     occupation.insert({llvm, curStack_inter});
-    curStack += 4;
+    curStack -= 4;
+}
+
+void MipsManager::pushFuncFParam(LLVM *llvm, int paramCnt)
+{
+    RegPtr reg;
+    if (llvm->midType == CONST_IR)
+    {
+        reg = allocTempReg(llvm);
+        addCode(new LiMips(reg, new IntermediateReg(dynamic_cast<ConstLLVM *>(llvm)->val), ""));
+    }
+    else
+        reg = findOccupiedReg(llvm, true);
+    // 存到-4 -8 -12...
+    addCode(new StoreMips(reg, new OffsetReg((paramCnt + 1) * -4), ""));
+}
+
+void MipsManager::linkFuncFParam(LLVM *llvm, int paramCnt)
+{
+    manager->occupy(llvm, new OffsetReg(STACKSIZE - (paramCnt - 3) * 4));
 }
 
 RegPtr MipsManager::load(LLVM *llvm)
 {
-    RegPtr reg = getFreeTempReg(llvm);
     RegPtr offset = occupation.at(llvm);
+    RegPtr reg = getFreeTempReg(llvm);
     addCode(new LoadMips(reg, offset, "#reload"));
     occupy(llvm, reg);
     return reg;
+}
+
+// 形参数量
+void MipsManager::allocStackSpace(int paramCnt)
+{
+    addCode(new ITypeMips(ADDIU_OP, sp, sp, new IntermediateReg(-STACKSIZE), "#alloc stack space"));
+    ALLOCCNT++;
+    curStack = STACKSIZE - 8 - 4 * (paramCnt - 4);
+}
+
+void MipsManager::freeStackSpace()
+{
+    addCode(new ITypeMips(ADDIU_OP, sp, sp, new IntermediateReg(STACKSIZE * ALLOCCNT), "#free stack space"));
+    ALLOCCNT = 0;
+}
+
+void MipsManager::pushRa()
+{
+    raBeenPushed = true;
+    addCode(new StoreMips(manager->ra, new OffsetReg(STACKSIZE - 4), "#push ra"));
+}
+
+void MipsManager::popRa()
+{
+    if (raBeenPushed)
+    {
+        addCode(new LoadMips(manager->ra, new OffsetReg(STACKSIZE - 4), "#pop ra"));
+        raBeenPushed = false;
+    }
+}
+
+void MipsManager::pushAll()
+{
+    set<LLVM *> pushSet;
+    for (auto &pair : occupation)
+    {
+        if (tempRegPool->inRegTypes(pair.second->getType()))
+        {
+            pushSet.insert(pair.first);
+        }
+    }
+
+    for (LLVM *llvm : pushSet)
+        push(llvm);
+}
+
+void MipsManager::resetFrame(string funcName)
+{
+    manager->curFuncName = funcName;
+    // 重置寄存器池
+    tempRegPool = new _RegPool();
+    // 释放occupation（reg offset intermediate）
+    occupation.clear();
 }

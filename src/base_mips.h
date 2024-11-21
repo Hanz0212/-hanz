@@ -1,32 +1,69 @@
-void mid_2_mips()
+void create_str()
 {
-    for (LLVM *llvm : midCodes)
-    {
-        if (llvm->midType == G_VAR_DEF_IR)
-        {
-            GDefLLVM *gDefLLVM = dynamic_cast<GDefLLVM *>(llvm);
-            if (isFuncType(gDefLLVM->GDefType))
-            {
-            }
-            else
-            {
-                manager->addData(new GlobalDefMips(gDefLLVM->GDefType, gDefLLVM->varName, gDefLLVM->length, gDefLLVM->initValList));
-                // todo 将全局变量塞到occupation
-                manager->occupy(llvm, new LabelReg(gDefLLVM->varName));
-            }
-        }
-        else
-            break;
-    }
-
     for (LLVM *llvm : strCodes)
     {
         GStrLLVM *gStrLLVM = dynamic_cast<GStrLLVM *>(llvm);
         manager->addData(new GlobalStrMips(gStrLLVM->loc, gStrLLVM->str));
+        manager->addLabel(to_string(gStrLLVM->loc), new LabelReg("JHZSTR" + to_string(gStrLLVM->loc)));
     }
+}
 
-    for (LLVM *llvm : midCodes)
+// 分析函数 存入funcName labelName 全局变量 str 并且保存dataCodes
+void save_global()
+{
+    int labelCnt = 0;
+    for (int i = 0; i < midCodes.size(); i++)
     {
+        LLVM *llvm = midCodes.at(i);
+        if (llvm->midType == G_VAR_DEF_IR)
+        {
+            GDefLLVM *gDefLLVM = dynamic_cast<GDefLLVM *>(llvm);
+            if (!isFuncType(gDefLLVM->GDefType))
+            {
+                manager->addData(new GlobalDefMips(gDefLLVM->GDefType, gDefLLVM->varName, gDefLLVM->length, gDefLLVM->initValList));
+                manager->addLabel(gDefLLVM->varName, new LabelReg(gDefLLVM->varName));
+            }
+        }
+        else if (llvm->midType == G_FUNC_DEF_IR)
+        {
+            labelCnt = 0;
+            GDefLLVM *gDefLLVM = dynamic_cast<GDefLLVM *>(llvm);
+            manager->curFuncName = gDefLLVM->varName;
+            manager->addFunc(gDefLLVM->varName, new LabelReg("JHZFUNC_" + gDefLLVM->varName));
+        }
+        else if (llvm->midType == LABEL_IR)
+        {
+            LabelLLVM *labelLLVM = dynamic_cast<LabelLLVM *>(llvm);
+            string str = manager->curFuncName + labelLLVM->returnTk;
+            manager->addLabel(str, new LabelReg("JHZLABEL_" + manager->curFuncName + "_" + to_string(labelCnt)));
+            labelCnt++;
+        }
+    }
+}
+
+void create_IO_code(CallLLVM *call)
+{
+    const map<string, int> m = {
+        {"getint", 5},
+        {"getchar", 12},
+        {"putint", 1},
+        {"putch", 11},
+        {"putstr", 4}};
+    if (call->funcName == "putint" || call->funcName == "putch")
+        manager->addCode_move(manager->a.at(0), call->src, "");
+    else if (call->funcName == "putstr")
+        manager->addCode(new LaMips(manager->a.at(0), manager->findLabel(to_string(dynamic_cast<GStrLLVM *>(call->gStr)->loc)), manager->zero_inter, ""));
+    manager->addCode(new LiMips(manager->v0, new IntermediateReg(m.at(call->funcName)), call->funcName));
+    manager->addCode(new SyscallMips());
+    if (call->funcName == "getint" || call->funcName == "getchar")
+        manager->occupy(call, manager->v0);
+}
+
+void create_code()
+{
+    for (int i = 0; i < midCodes.size(); i++)
+    {
+        LLVM *llvm = midCodes.at(i);
         switch (llvm->midType)
         {
         case ALLOCA_IR:
@@ -39,16 +76,21 @@ void mid_2_mips()
         case LOAD_IR:
         {
             LoadLLVM *loadLLVM = dynamic_cast<LoadLLVM *>(llvm);
-            RegPtr desReg = manager->findOccupiedReg(loadLLVM->des);
-            // desReg保证:全局局部数组一定返回reg，全局变量一定返回label, 置true一定返回tempReg,局部变量返回offset
             RegPtr rt = manager->allocTempReg(loadLLVM);
-            manager->addCode(new LoadMips(rt, desReg, llvm->toString()));
+            RegPtr desReg = manager->findOccupiedReg(loadLLVM->des);
+            if (loadLLVM->des->midType == GETELEMENTPTR_IR && desReg->getType() == OFFSET)
+            {
+                RegPtr tmp = manager->allocTempReg(llvm);
+                manager->addCode(new LoadMips(tmp, desReg, "#load address"));
+                manager->addCode(new LoadMips(rt, tmp, llvm->toString()));
+            }
+            else
+                manager->addCode(new LoadMips(rt, desReg, llvm->toString()));
             break;
         }
         case STORE_IR:
         {
             StoreLLVM *storeLLVM = dynamic_cast<StoreLLVM *>(llvm);
-            RegPtr desReg = manager->findOccupiedReg(storeLLVM->des);
             RegPtr rt;
             if (storeLLVM->val->midType == CONST_IR)
             {
@@ -67,8 +109,15 @@ void mid_2_mips()
             {
                 rt = manager->findOccupiedReg(storeLLVM->val);
             }
-            manager->addCode(new StoreMips(rt, desReg, llvm->toString()));
-            manager->tryReleaseReg(rt);
+            RegPtr desReg = manager->findOccupiedReg(storeLLVM->des);
+            if (storeLLVM->des->midType == GETELEMENTPTR_IR && desReg->getType() == OFFSET)
+            {
+                RegPtr tmp = manager->allocTempReg(llvm);
+                manager->addCode(new LoadMips(tmp, desReg, "#load address"));
+                manager->addCode(new StoreMips(rt, tmp, llvm->toString()));
+            }
+            else
+                manager->addCode(new StoreMips(rt, desReg, llvm->toString()));
             break;
         }
         case GETELEMENTPTR_IR:
@@ -96,6 +145,17 @@ void mid_2_mips()
                 }
                 manager->addCode(new LaMips(rt, base, rt, llvm->toString()));
             }
+            else if (in32Reg(base->getType())) // 函数形参数组
+            {
+                if (offset->getType() == INTERMEDIATE)
+                    manager->addCode(new LaMips(rt, new OffsetReg(offset->val), base, llvm->toString()));
+                else // offset 为 reg
+                {
+                    manager->addCode(new ITypeMips(SLL_OP, offset, offset, new IntermediateReg(2), "#reg <<= 2"));
+                    manager->addCode(new RTypeMips(ADD_OP, rt, base, offset, "#rt = offset+base"));
+                    manager->addCode(new LaMips(rt, manager->zero_off, rt, llvm->toString()));
+                }
+            }
             break;
         }
         case ADD_IR:
@@ -107,26 +167,64 @@ void mid_2_mips()
         case SDIV_IR:
         {
             RTypeLLVM *rTypeLLVM = dynamic_cast<RTypeLLVM *>(llvm);
-            RegPtr rs = manager->findOccupiedReg(rTypeLLVM->op1, true);
-            RegPtr rt = manager->findOccupiedReg(rTypeLLVM->op2, true);
             RegPtr rd = manager->allocTempReg(rTypeLLVM);
+            if (rTypeLLVM->op1->midType == CONST_IR && rTypeLLVM->op2->midType == CONST_IR)
+            {
+                int ans = mid_cal_2op(rTypeLLVM->midType,
+                                      dynamic_cast<ConstLLVM *>(rTypeLLVM->op1)->val,
+                                      dynamic_cast<ConstLLVM *>(rTypeLLVM->op2)->val);
+                manager->addCode(new LiMips(rd, new IntermediateReg(ans), "#op1 op2 both const"));
+                break;
+            }
+            if (rTypeLLVM->op1->midType != CONST_IR && rTypeLLVM->op2->midType != CONST_IR)
+            {
+                RegPtr rs = manager->findOccupiedReg(rTypeLLVM->op1, true);
+                RegPtr rt = manager->findOccupiedReg(rTypeLLVM->op2, true);
+                manager->addCode(new RTypeMips(mid_type_2_mips_type.at(rTypeLLVM->midType), rd, rs, rt, llvm->toString()));
+                if (llvm->midType == MUL_IR || llvm->midType == SREM_IR || llvm->midType == SDIV_IR)
+                    manager->addCode(new MFTypeMips(llvm->midType == SREM_IR, rd, ""));
+                break;
+            }
+            RegPtr rs, rt;
+            if (rTypeLLVM->op1->midType == CONST_IR)
+            {
+                rs = manager->allocTempReg(rTypeLLVM->op1);
+                manager->addCode(new LiMips(rs, new IntermediateReg(dynamic_cast<ConstLLVM *>(rTypeLLVM->op1)->val), ""));
+                rt = manager->findOccupiedReg(rTypeLLVM->op2, true);
+            }
+            else if (rTypeLLVM->op2->midType == CONST_IR)
+            {
+                rs = manager->findOccupiedReg(rTypeLLVM->op1, true);
+                rt = manager->allocTempReg(rTypeLLVM->op2);
+                manager->addCode(new LiMips(rt, new IntermediateReg(dynamic_cast<ConstLLVM *>(rTypeLLVM->op2)->val), ""));
+            }
+
             if (llvm->midType == MUL_IR || llvm->midType == SREM_IR || llvm->midType == SDIV_IR)
             {
-                manager->addCode(new MDTypeMips(llvm->midType != MUL_IR, rs, rt, llvm->toString()));
+                manager->addCode(new RTypeMips(mid_type_2_mips_type.at(rTypeLLVM->midType), rd, rs, rt, llvm->toString()));
                 manager->addCode(new MFTypeMips(llvm->midType == SREM_IR, rd, ""));
             }
             else
-            {
                 manager->addCode(new RTypeMips(mid_type_2_mips_type.at(rTypeLLVM->midType), rd, rs, rt, llvm->toString()));
-            }
+
             break;
         }
         case ICMP_IR:
         { // > < >= <= != ==
             IcmpLLVM *icmpLLVM = dynamic_cast<IcmpLLVM *>(llvm);
+            RegPtr rd = manager->allocTempReg(icmpLLVM);
+            if (icmpLLVM->op1->midType == CONST_IR)
+            {
+                RegPtr reg = manager->allocTempReg(icmpLLVM->op1);
+                manager->addCode(new LiMips(reg, new IntermediateReg(dynamic_cast<ConstLLVM *>(icmpLLVM->op1)->val), ""));
+            }
+            if (icmpLLVM->op2->midType == CONST_IR)
+            {
+                RegPtr reg = manager->allocTempReg(icmpLLVM->op2);
+                manager->addCode(new LiMips(reg, new IntermediateReg(dynamic_cast<ConstLLVM *>(icmpLLVM->op2)->val), ""));
+            }
             RegPtr rs = manager->findOccupiedReg(icmpLLVM->op1, true);
             RegPtr rt = manager->findOccupiedReg(icmpLLVM->op2, true);
-            RegPtr rd = manager->allocTempReg(icmpLLVM);
             switch (icmpLLVM->cmpType)
             {
             case LSS: // <
@@ -173,11 +271,125 @@ void mid_2_mips()
         case LABEL_IR:
         {
             LabelLLVM *labelLLVM = dynamic_cast<LabelLLVM *>(llvm);
-            manager->addCode(new LabelMips(new LabelReg("label" + labelLLVM->returnTk.substr(1)), ""));
+            manager->addCode(new LabelMips(manager->findLabel(manager->curFuncName + labelLLVM->returnTk), ""));
+            break;
+        }
+        case G_FUNC_DEF_IR:
+        {
+            GDefLLVM *gDefLLVM = dynamic_cast<GDefLLVM *>(llvm);
+            // 设置curFuncName 重置临时寄存器池 清空occupation
+            manager->resetFrame(gDefLLVM->varName);
+            // 函数标签
+            manager->addCode(new LabelMips(manager->findFunc(manager->curFuncName), "")); // name
+            // 将形参与a寄存器建立映射 多余4个的部分与offset建立映射
+            int len = gDefLLVM->funcFParams.size();
+            for (int j = 0; j < len; j++)
+            {
+                AllocaLLVM *alloca = dynamic_cast<AllocaLLVM *>(syb_2_llvm.at(gDefLLVM->funcFParams.at(j)));
+                FuncFParamLLVM *param = dynamic_cast<FuncFParamLLVM *>(alloca->funcFParam);
+                if (j < 4)
+                    manager->occupy(param, manager->a.at(j));
+                else
+                    manager->linkFuncFParam(param, j);
+            }
+            // 申请栈空间 并初始化curStack
+            manager->allocStackSpace(len);
+            // 将ra压栈
+            if (manager->curFuncName != "main")
+                manager->pushRa();
+            break;
+        }
+        case FUNC_END_IR:
+        {
+            break;
+        }
+        case CALL_IR:
+        {
+            CallLLVM *callLLVM = dynamic_cast<CallLLVM *>(llvm);
+            // 若为io函数 特殊执行
+            if (manager->isIOFuncName(callLLVM->funcName))
+            {
+                create_IO_code(callLLVM);
+                break;
+            }
+
+            // 传参到a寄存器，多余4个的依次放入-4($sp) -8($sp) ....
+            for (int j = 0; j < callLLVM->params.size(); j++)
+            {
+                if (j < 4)
+                    manager->addCode_move(manager->a.at(j), callLLVM->params.at(j), "#save a");
+                else
+                    manager->pushFuncFParam(callLLVM->params.at(j), j);
+            }
+            // push所有被占用的寄存器
+            manager->pushAll(); 
+            // jal跳转到函数
+            manager->addCode(new JTypeMips(JAL_OP, manager->findFunc(callLLVM->funcName), llvm->toString()));
+            manager->addCode(new NopMips());
+            // 函数跳回，若有返回值 寄存器存储并建立映射
+            if (callLLVM->retType != VoidFunc)
+            {
+                RegPtr retVal = manager->allocTempReg(callLLVM);
+                manager->addCode(new ITypeMips(ADDIU_OP, retVal, manager->v0, manager->zero_inter, "#get ret val"));
+            }
+            break;
+        }
+        case RET_IR:
+        {
+            RetLLVM *ret = dynamic_cast<RetLLVM *>(llvm);
+
+            if (manager->curFuncName != "main")
+            {
+                // 保存返回值
+                if (ret->retType != VoidFunc)
+                { 
+                    manager->addCode(new ITypeMips(ADDIU_OP, manager->v0, manager->findOccupiedReg(ret->src),
+                                                   manager->zero_inter, "#save return value"));
+                }
+                // ra存回寄存器
+                manager->popRa();
+                // 释放栈空间
+                manager->freeStackSpace();
+                // jr 跳回
+                manager->addCode(new JRMips());
+                manager->addCode(new NopMips());
+            }
+            break;
+        }
+        case BR_IR:
+        {
+            BrLLVM *br = dynamic_cast<BrLLVM *>(llvm);
+            RegPtr label1 = manager->findLabel(manager->curFuncName + br->label1Tk);
+
+            if (br->isNoCond())
+            {
+                manager->addCode(new JTypeMips(J_OP, label1, ""));
+                manager->addCode(new NopMips());
+                break;
+            }
+
+            RegPtr label2 = manager->findLabel(manager->curFuncName + br->label2Tk);
+            RegPtr op1 = manager->findOccupiedReg(br->cmp);
+            manager->addCode(new BTypeMips(BGTZ_OP, op1, NULL, label1, ""));
+            manager->addCode(new NopMips());
+            manager->addCode(new JTypeMips(J_OP, label2, ""));
+            manager->addCode(new NopMips());
+            break;
         }
         default:
             continue;
         }
     }
+}
+
+void mid_2_mips()
+{
+    create_str();
+    save_global();
+    manager->addCode(new JTypeMips(J_OP, manager->findFunc("main"), "START"));
+    manager->addCode(new NopMips());
+    create_code();
+    manager->addCode(new LiMips(manager->v0, new IntermediateReg(10), "END"));
+    manager->addCode(new SyscallMips());
     return;
 }
