@@ -53,6 +53,8 @@ void DIE(string text);
 bool inDie = false;
 void DIE(string text)
 {
+    RegPtr pp = NULL;
+    pp->getStr();
     if (inDie)
     {
         cout << "D I E AGAIN! ! !" << endl;

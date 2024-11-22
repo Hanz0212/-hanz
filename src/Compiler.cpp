@@ -66,8 +66,9 @@ int main()
     optimize_mid();
     print_mid();
     fout4.close();
-
-    // 目标代码生成
+    
+    // fout5 << ""
+    // // 目标代码生成
     mid_2_mips();
     cout << "mips done!" << endl;
     print_mips();

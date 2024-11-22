@@ -85,7 +85,7 @@ void create_code()
                 manager->addCode(new LoadMips(rt, tmp, llvm->toString()));
             }
             else
-                manager->addCode(new LoadMips(rt, desReg, llvm->toString()));
+            manager->addCode(new LoadMips(rt, desReg, llvm->toString()));
             break;
         }
         case STORE_IR:
@@ -117,7 +117,7 @@ void create_code()
                 manager->addCode(new StoreMips(rt, tmp, llvm->toString()));
             }
             else
-                manager->addCode(new StoreMips(rt, desReg, llvm->toString()));
+            manager->addCode(new StoreMips(rt, desReg, llvm->toString()));
             break;
         }
         case GETELEMENTPTR_IR:
@@ -277,26 +277,15 @@ void create_code()
         case G_FUNC_DEF_IR:
         {
             GDefLLVM *gDefLLVM = dynamic_cast<GDefLLVM *>(llvm);
-            // 设置curFuncName 重置临时寄存器池 清空occupation
             manager->resetFrame(gDefLLVM->varName);
-            // 函数标签
-            manager->addCode(new LabelMips(manager->findFunc(manager->curFuncName), "")); // name
-            // 将形参与a寄存器建立映射 多余4个的部分与offset建立映射
+            // 将形参与a寄存器建立映射
             int len = gDefLLVM->funcFParams.size();
             for (int j = 0; j < len; j++)
             {
                 AllocaLLVM *alloca = dynamic_cast<AllocaLLVM *>(syb_2_llvm.at(gDefLLVM->funcFParams.at(j)));
                 FuncFParamLLVM *param = dynamic_cast<FuncFParamLLVM *>(alloca->funcFParam);
-                if (j < 4)
-                    manager->occupy(param, manager->a.at(j));
-                else
-                    manager->linkFuncFParam(param, j);
+                manager->occupy(param, manager->a.at(j));
             }
-            // 申请栈空间 并初始化curStack
-            manager->allocStackSpace(len);
-            // 将ra压栈
-            if (manager->curFuncName != "main")
-                manager->pushRa();
             break;
         }
         case FUNC_END_IR:
@@ -306,27 +295,21 @@ void create_code()
         case CALL_IR:
         {
             CallLLVM *callLLVM = dynamic_cast<CallLLVM *>(llvm);
-            // 若为io函数 特殊执行
             if (manager->isIOFuncName(callLLVM->funcName))
             {
                 create_IO_code(callLLVM);
                 break;
             }
 
-            // 传参到a寄存器，多余4个的依次放入-4($sp) -8($sp) ....
+            // 传参到a寄存器
             for (int j = 0; j < callLLVM->params.size(); j++)
             {
-                if (j < 4)
-                    manager->addCode_move(manager->a.at(j), callLLVM->params.at(j), "#save a");
-                else
-                    manager->pushFuncFParam(callLLVM->params.at(j), j);
+                manager->addCode_move(manager->a.at(j), callLLVM->params.at(j), "#save a");
             }
-            // push所有被占用的寄存器
-            manager->pushAll(); 
-            // jal跳转到函数
+            manager->pushAll(); // 腾出所有寄存器
             manager->addCode(new JTypeMips(JAL_OP, manager->findFunc(callLLVM->funcName), llvm->toString()));
             manager->addCode(new NopMips());
-            // 函数跳回，若有返回值 寄存器存储并建立映射
+            // 若有返回值 寄存器存储并建立映射
             if (callLLVM->retType != VoidFunc)
             {
                 RegPtr retVal = manager->allocTempReg(callLLVM);
@@ -337,20 +320,19 @@ void create_code()
         case RET_IR:
         {
             RetLLVM *ret = dynamic_cast<RetLLVM *>(llvm);
+            manager->correctStackSpace();
 
             if (manager->curFuncName != "main")
             {
-                // 保存返回值
                 if (ret->retType != VoidFunc)
-                { 
+                { // 保存返回值
                     manager->addCode(new ITypeMips(ADDIU_OP, manager->v0, manager->findOccupiedReg(ret->src),
                                                    manager->zero_inter, "#save return value"));
                 }
-                // ra存回寄存器
+
                 manager->popRa();
-                // 释放栈空间
-                manager->freeStackSpace();
-                // jr 跳回
+                manager->addCode(new ITypeMips(ADDIU_OP, manager->sp, manager->sp,
+                                               new IntermediateReg(manager->getSuitStackSpace()), "恢复栈空间"));
                 manager->addCode(new JRMips());
                 manager->addCode(new NopMips());
             }

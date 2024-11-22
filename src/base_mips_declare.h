@@ -22,7 +22,7 @@ struct Mips
     virtual string toString()
     {
         string result = annotation.empty() ? "" : ("\t#\t" + annotation);
-        return !annotation.empty() && annotation.at(0) == '#' ? result : result + "";
+        return !annotation.empty() && annotation.at(0) == '#' ? result : result + "\n";
     }
 
     void addAnnotation(string annotation)
@@ -41,6 +41,8 @@ private:
     // 存全局变量 str funcNAme
     map<string, RegPtr> labelRegs;
     set<string> IOFuncNames = {"getint", "getchar", "putint", "putch", "putstr"};
+    IntermediateReg *stackSpace;
+    bool stackSpaceIsCorrect = true;
     bool raBeenPushed = false;
 
     RegPtr getFreeTempReg(LLVM *llvm);
@@ -48,11 +50,14 @@ private:
     void push(LLVM *llvm);
 
 public:
-    const int STACKSIZE = 400;
-    int ALLOCCNT = 0;
     RegPtr zero = new TempReg(ZERO);
     RegPtr sp = new TempReg(SP);
-    vector<RegPtr> a = {new TempReg(A0), new TempReg(A1), new TempReg(A2), new TempReg(A3)};
+    vector<RegPtr> a = {new TempReg(A0), new TempReg(A1),
+                        new TempReg(A2), new TempReg(A3), 
+                        new TempReg(S0), new TempReg(S1), 
+                        new TempReg(S2), new TempReg(S3),
+                        new TempReg(S4), new TempReg(S5),
+                        new TempReg(S6), new TempReg(S7)};
     RegPtr v0 = new TempReg(V0);
     RegPtr ra = new TempReg(RA);
     RegPtr zero_inter = new IntermediateReg(0);
@@ -66,14 +71,13 @@ public:
     void resetFrame(string funcName);
 
     bool isIOFuncName(string funcName) { return IOFuncNames.find(funcName) != IOFuncNames.end(); }
-    void allocStackSpace(int paramCnt);
-    void freeStackSpace();
+    int getSuitStackSpace() { return curStack + 8; }
+    RegPtr allocStackSpace();
+    void correctStackSpace();
 
     void pushRa();
     void popRa();
     void pushAll();
-    void pushFuncFParam(LLVM *llvm, int paramCnt);
-    void linkFuncFParam(LLVM *llvm, int paramCnt);
 
     MipsManager();
     void occupy(LLVM *llvm, RegPtr reg);

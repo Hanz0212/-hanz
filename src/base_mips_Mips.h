@@ -13,7 +13,7 @@ void MipsManager::addCode_move(RegPtr des, LLVM *llvm, string annotation)
     RegPtr src;
     if (llvm->midType == CONST_IR)
         src = new IntermediateReg(dynamic_cast<ConstLLVM *>(llvm)->val);
-    else
+    else 
         src = findOccupiedReg(llvm, true);
 
     if (!in32Reg(des->getType()) || src->getType() != INTERMEDIATE && !in32Reg(src->getType()))
@@ -131,7 +131,7 @@ RegPtr MipsManager::allocMem(LLVM *llvm, int size)
 {
     RegPtr reg = new OffsetReg(curStack);
     occupy(llvm, reg);
-    curStack -= size * 4;
+    curStack += size * 4;
     return reg;
 }
 
@@ -154,26 +154,7 @@ void MipsManager::push(LLVM *llvm)
     addCode(new StoreMips(findOccupiedReg(llvm), curStack_inter, "#push"));
     release(llvm);
     occupation.insert({llvm, curStack_inter});
-    curStack -= 4;
-}
-
-void MipsManager::pushFuncFParam(LLVM *llvm, int paramCnt)
-{
-    RegPtr reg;
-    if (llvm->midType == CONST_IR)
-    {
-        reg = allocTempReg(llvm);
-        addCode(new LiMips(reg, new IntermediateReg(dynamic_cast<ConstLLVM *>(llvm)->val), ""));
-    }
-    else
-        reg = findOccupiedReg(llvm, true);
-    // 存到-4 -8 -12...
-    addCode(new StoreMips(reg, new OffsetReg((paramCnt + 1) * -4), ""));
-}
-
-void MipsManager::linkFuncFParam(LLVM *llvm, int paramCnt)
-{
-    manager->occupy(llvm, new OffsetReg(STACKSIZE - (paramCnt - 3) * 4));
+    curStack += 4;
 }
 
 RegPtr MipsManager::load(LLVM *llvm)
@@ -185,31 +166,37 @@ RegPtr MipsManager::load(LLVM *llvm)
     return reg;
 }
 
-// 形参数量
-void MipsManager::allocStackSpace(int paramCnt)
+RegPtr MipsManager::allocStackSpace()
 {
-    addCode(new ITypeMips(ADDIU_OP, sp, sp, new IntermediateReg(-STACKSIZE), "#alloc stack space"));
-    ALLOCCNT++;
-    curStack = STACKSIZE - 8 - 4 * (paramCnt - 4);
+    if (!stackSpaceIsCorrect)
+        DIE("havnt correct stack space!");
+    stackSpace = new IntermediateReg(-400);
+    stackSpaceIsCorrect = false;
+
+    // 0留给ra
+    curStack = 4;
+    return stackSpace;
 }
 
-void MipsManager::freeStackSpace()
+void MipsManager::correctStackSpace()
 {
-    addCode(new ITypeMips(ADDIU_OP, sp, sp, new IntermediateReg(STACKSIZE * ALLOCCNT), "#free stack space"));
-    ALLOCCNT = 0;
+    if (stackSpaceIsCorrect)
+        DIE("stack space already correct!");
+    stackSpaceIsCorrect = true;
+    stackSpace->changeValTo(-curStack - 8);
 }
 
 void MipsManager::pushRa()
 {
     raBeenPushed = true;
-    addCode(new StoreMips(manager->ra, new OffsetReg(STACKSIZE - 4), "#push ra"));
+    addCode(new StoreMips(manager->ra, manager->zero_off, "#push ra"));
 }
 
 void MipsManager::popRa()
 {
     if (raBeenPushed)
     {
-        addCode(new LoadMips(manager->ra, new OffsetReg(STACKSIZE - 4), "#pop ra"));
+        addCode(new LoadMips(manager->ra, manager->zero_off, "#pop ra"));
         raBeenPushed = false;
     }
 }
@@ -232,8 +219,14 @@ void MipsManager::pushAll()
 void MipsManager::resetFrame(string funcName)
 {
     manager->curFuncName = funcName;
+    manager->addCode(new LabelMips(manager->findFunc(funcName), "")); // name
     // 重置寄存器池
     tempRegPool = new _RegPool();
     // 释放occupation（reg offset intermediate）
     occupation.clear();
+
+    // 申请栈空间
+    manager->addCode(new ITypeMips(ADDIU_OP, manager->sp, manager->sp, manager->allocStackSpace(), "申请栈空间"));
+    if (funcName != "main")
+        manager->pushRa();
 }

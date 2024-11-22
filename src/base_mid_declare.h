@@ -456,7 +456,7 @@ struct LoadLLVM : LLVM
     {
 
         if (des->midType == ALLOCA_IR &&
-            dynamic_cast<AllocaLLVM *>(des)->length == -1 &&
+            dynamic_cast<AllocaLLVM *>(des)->isFuncArrayParam() &&
             isArrayType(dynamic_cast<AllocaLLVM *>(des)->allocaType))
             return join_str({this->returnTk, "=", "load", get_i_tk(loadType) + "*" + ",", get_ip_tk(loadType) + "*", this->desTk});
         else
