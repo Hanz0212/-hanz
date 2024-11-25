@@ -29,6 +29,16 @@ int main()
     print_tokens();
     fout1.close();
 
+    if (!errors.empty())
+    {
+        int a = 10;
+        while (a--)
+        {
+            fout4 << "damn" << endl;
+        }
+        return 0;
+    }
+
     // 语法分析
     token_2_tree();
     cout << "parser done!" << endl;
@@ -66,14 +76,12 @@ int main()
     optimize_mid();
     print_mid();
     fout4.close();
-    
-    // fout5 << ""
-    // // 目标代码生成
+
+    // 目标代码生成
     mid_2_mips();
     cout << "mips done!" << endl;
     print_mips();
     fout5.close();
-
 
     return 0;
 }

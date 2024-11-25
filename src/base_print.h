@@ -116,6 +116,8 @@ void print_mips()
     fout5 << ".data" << endl;
     for (DataMips *data : manager->mipsDatas)
         fout5 << data->toString() << endl;
+    
+    fout5 << "\t.align 2" << endl;
         
     fout5 << ".text" << endl;
     for (CodeMips *code : manager->mipsCodes)

@@ -64,6 +64,11 @@ struct OffsetReg : RegStruct
     {
         return to_string(val);
     }
+
+private:
+    friend class MipsManager;
+
+    void changeValTo(int newVal) { this->val = newVal; }
 };
 
 struct LabelReg : RegStruct

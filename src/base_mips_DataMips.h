@@ -57,7 +57,7 @@ struct GlobalDefMips : DataMips
             initValTk.pop_back();
             initValTk.pop_back();
         }
-        initValTk = initValTk.empty() ? "" : varName.size() > 3 ? "\n\t\t." + lenTk + " " + initValTk
+        initValTk = initValTk.empty() ? "" : varName.size() > 12 ? "\n\t\t." + lenTk + " " + initValTk
                                                                 : "\t." + lenTk + " " + initValTk;
 
         string initZeroTk;
@@ -76,7 +76,7 @@ struct GlobalStrMips : DataMips
 
     string toString() override
     {
-        return "\t" + join_str({"JHZSTR" + to_string(loc) + ":\t" + ".asciiz", "\"" + str + "\""});
+        return "\t" + join_str({"JHZSTR_" + to_string(loc) + ":\t" + ".asciiz", "\"" + str + "\""});
     }
 };
 

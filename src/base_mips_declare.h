@@ -22,7 +22,7 @@ struct Mips
     virtual string toString()
     {
         string result = annotation.empty() ? "" : ("\t#\t" + annotation);
-        return !annotation.empty() && annotation.at(0) == '#' ? result : result + "\n";
+        return !annotation.empty() && annotation.at(0) == '#' ? result : result + "";
     }
 
     void addAnnotation(string annotation)
@@ -42,22 +42,20 @@ private:
     map<string, RegPtr> labelRegs;
     set<string> IOFuncNames = {"getint", "getchar", "putint", "putch", "putstr"};
     IntermediateReg *stackSpace;
+    vector<OffsetReg *> funfFParamStackSpaces;
     bool stackSpaceIsCorrect = true;
     bool raBeenPushed = false;
 
     RegPtr getFreeTempReg(LLVM *llvm);
-    void release(LLVM *llvm);
     void push(LLVM *llvm);
 
 public:
+    void release(LLVM *llvm);
+
     RegPtr zero = new TempReg(ZERO);
     RegPtr sp = new TempReg(SP);
     vector<RegPtr> a = {new TempReg(A0), new TempReg(A1),
-                        new TempReg(A2), new TempReg(A3), 
-                        new TempReg(S0), new TempReg(S1), 
-                        new TempReg(S2), new TempReg(S3),
-                        new TempReg(S4), new TempReg(S5),
-                        new TempReg(S6), new TempReg(S7)};
+                        new TempReg(A2), new TempReg(A3)};
     RegPtr v0 = new TempReg(V0);
     RegPtr ra = new TempReg(RA);
     RegPtr zero_inter = new IntermediateReg(0);
@@ -75,6 +73,12 @@ public:
     RegPtr allocStackSpace();
     void correctStackSpace();
 
+    RegPtr allocFuncFParamStackSpaces()
+    {
+        OffsetReg *offset = new OffsetReg(400);
+        funfFParamStackSpaces.push_back(offset);
+        return offset;
+    }
     void pushRa();
     void popRa();
     void pushAll();

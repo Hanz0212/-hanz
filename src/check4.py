@@ -7,14 +7,14 @@ import shutil
 import subprocess
 
 zip_name = "2024代码生成公共测试程序库"
-work_path = "D:\c++_code\COMPILER\code\src\\"
+work_path = "D:\c++_code\COMPILER\-hanz\src\\"
 src_path = work_path
 zip_path = os.path.join(work_path, zip_name + '.zip')
 extract_folder = os.path.join(work_path,'extracted_files')
 exe_name = 'compiler.exe'
 testfile_name = 'testfile.txt'
 ans_name = 'ans.txt'
-mid_name = 'mid.ll'
+mid_name = 'mips.txt'
 error_name = 'error.txt'
 diff_name = 'diff.html'
 run_path = os.path.join(work_path, 'run')
@@ -39,17 +39,19 @@ def build_work_place():
                     os.path.join(run_path, exe_name))
     shutil.copyfile(os.path.join(curcase_path, testfile_name), os.path.join(run_path,  testfile_name))
     shutil.copyfile(os.path.join(curcase_path, ans_name), os.path.join(run_path , ans_name))
+    shutil.copyfile(os.path.join(curcase_path, "in.txt"), os.path.join(run_path , "in.txt"))
 
 def run(): # 运行编译器 获得输出
     subprocess.run([os.path.join(run_path, exe_name)])
 
 def check_same():
     with open(ans_name, "r") as f1:
-        with open(mid_name, "r") as f2:
+        with open("out.txt", "r") as f2:
             text1 = f1.readlines()
             text2 = f2.readlines()
-    text1 = [i.strip() for i in text1]
-    text2 = [i.strip() for i in text2]
+    text2 = text2[2:]
+    text1 = [i.strip() for i in text1 if i.strip() != ""]
+    text2 = [i.strip() for i in text2 if i.strip() != ""]
     d = difflib.HtmlDiff()
     htmlContent = d.make_file(text1, text2)
     with open(diff_name, "w") as f:
@@ -64,8 +66,24 @@ def check_compiler():
     save = os.getcwd()
     os.chdir(run_path)
     run()
+    # 运行mips
+    runmips()
+    
     check_same()
     os.chdir(save)
+
+def runmips():
+    cmd = [
+        "java",
+        "-jar",
+        "D:\c++_code\COMPILER\-hanz\src\MARS-2024.jar",
+        "mips.txt",
+        "<",
+        "in.txt",
+        ">",
+        "out.txt",
+    ]
+    os.system(" ".join(cmd))
 
 def check_cases_at(dir_path):
     global curcase_path

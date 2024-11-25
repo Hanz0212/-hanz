@@ -22,10 +22,16 @@ struct RTypeMips : CodeMips // 三寄存器运算
 
     string toString() override
     {
-        if (mipsType == MULT_OP || mipsType == DIV_OP)
-            return "\t" + join_str({mips_type_2_opstr.at(mipsType), rs->getStr() + ",", rt->getStr()});
-        else
-            return "\t" + join_str({mips_type_2_opstr.at(mipsType), rd->getStr() + ",", rs->getStr() + ",", rt->getStr()}) + Mips::toString();
+        if (in32Reg(rs->getType()) && in32Reg(rt->getType()))
+        {
+            if (mipsType == MULT_OP || mipsType == DIV_OP)
+                return "\t" + join_str({mips_type_2_opstr.at(mipsType), rs->getStr() + ",", rt->getStr()});
+            else if (in32Reg(rd->getType()))
+                return "\t" + join_str({mips_type_2_opstr.at(mipsType), rd->getStr() + ",", rs->getStr() + ",", rt->getStr()}) + Mips::toString();
+        }
+        DIE("in RTpeMips: error type : <" + reg_type_2_str(rd->getType()) +
+            "," + reg_type_2_str(rs->getType()) + "," + reg_type_2_str(rt->getType()) + ">");
+        return "erorr";
     }
 };
 
@@ -37,7 +43,11 @@ struct MFTypeMips : RTypeMips
 
     string toString() override
     {
-        return "\t" + join_str({mips_type_2_opstr.at(mipsType), rd->getStr()});
+        if (in32Reg(rd->getType()))
+            return "\t" + join_str({mips_type_2_opstr.at(mipsType), rd->getStr()});
+        else
+            DIE("in MFTypeMips : error type : <" + reg_type_2_str(rd->getType()) + ">");
+        return "error";
     }
 };
 
@@ -90,6 +100,8 @@ struct MEMTypeMips : ITypeMips
 
         if (!rt || !desReg)
             DIE("in StoreMips : nullptr :" + join_str({to_string(rt == 0), to_string(desReg == 0)}));
+        if (desReg->getType() == OFFSET && ((desReg->val % 4) != 0))
+            DIE("in StoreMips : offset mod 4 != 0!!! offset:" + to_string(desReg->val));
 
         if (in32Reg(rt->getType()) && in32Reg(desReg->getType())) // 0($desReg)
             result = join_str({opTk, rt->getStr() + ",", "0(" + desReg->getStr() + ")"});
@@ -124,7 +136,7 @@ struct LoadMips : MEMTypeMips
 struct JTypeMips : CodeMips
 {
     JTypeMips(mips_type mipsType, RegPtr labelName, string annotation)
-        : CodeMips(mipsType, NULL, NULL, NULL, NULL, labelName, annotation) { }
+        : CodeMips(mipsType, NULL, NULL, NULL, NULL, labelName, annotation) {}
 
     string toString() override
     {
@@ -136,6 +148,7 @@ struct JTypeMips : CodeMips
     }
 };
 
+// op reg reg label / op reg label
 struct BTypeMips : CodeMips
 {
     BTypeMips(mips_type mipsType, RegPtr op1, RegPtr op2, RegPtr labelName, string annotation)
@@ -144,6 +157,14 @@ struct BTypeMips : CodeMips
     string toString() override
     {
         RegPtr op1 = rs, op2 = rt;
+        if (!op1 || !labelName)
+            DIE("in BTypeMips : nullptr :" + join_str({to_string(op1 == 0), to_string(labelName == 0)}));
+        if (!op2 && (!in32Reg(op1->getType()) || labelName->getType() != LABEL))
+            DIE("in BTypeMips :error type:<" + reg_type_2_str(op1->getType()) + "," + reg_type_2_str(labelName->getType()) + ">");
+        if (op2 && (!in32Reg(op1->getType()) || !in32Reg(op2->getType()) || labelName->getType() != LABEL))
+            DIE("in BTypeMips :error type:<" + reg_type_2_str(op1->getType()) + "," + reg_type_2_str(op2->getType()) +
+                "," + reg_type_2_str(labelName->getType()) + ">");
+
         if (op2 == NULL)
             return "\t" + join_str({mips_type_2_opstr.at(mipsType), op1->getStr() + ",", labelName->getStr()}) + Mips::toString();
         else
@@ -195,6 +216,9 @@ struct LaMips : CodeMips
     {
         string result = "\t";
         RegPtr base = rs, offset = intermediate;
+        if (offset->getType() == INTERMEDIATE && ((offset->val % 4) != 0) || base->getType() == OFFSET && ((base->val % 4) != 0))
+            DIE("in LaMips : offset mod 4 != 0!!! offset:" + to_string(offset->val));
+
         if (base->getType() == LABEL && offset->getType() == INTERMEDIATE) // label + val
             result += join_str({"la", rt->getStr() + ",", base->getStr(), "+", offset->getStr()});
         else if (base->getType() == LABEL && in32Reg(offset->getType())) // label($t)

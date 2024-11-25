@@ -13,7 +13,7 @@ void MipsManager::addCode_move(RegPtr des, LLVM *llvm, string annotation)
     RegPtr src;
     if (llvm->midType == CONST_IR)
         src = new IntermediateReg(dynamic_cast<ConstLLVM *>(llvm)->val);
-    else 
+    else
         src = findOccupiedReg(llvm, true);
 
     if (!in32Reg(des->getType()) || src->getType() != INTERMEDIATE && !in32Reg(src->getType()))
@@ -89,6 +89,8 @@ RegPtr MipsManager::findOccupiedReg(LLVM *llvm, bool needTempReg)
         reg = load(llvm);
     }
 
+    if (reg->getType() == INTERMEDIATE)
+        DIE("cant find intermediate in occupation!!");
     return reg;
 }
 
@@ -108,14 +110,18 @@ RegPtr MipsManager::getFreeTempReg(LLVM *llvm)
     reg_type regType = tempRegPool->getRegTypeAt(0);
     tempRegPool->updateRegType();
     LLVM *tllvm;
+    bool flag = false;
     for (const auto &pair : occupation)
     {
         if (pair.second->getType() == regType)
         {
             tllvm = pair.first;
+            flag = true;
             break;
         }
     }
+    if (!flag)
+        DIE("in get freeTempReg: reg not in regpool and not in occupation");
     push(tllvm);
     return tempRegPool->getReg(regType);
 }
@@ -184,6 +190,9 @@ void MipsManager::correctStackSpace()
         DIE("stack space already correct!");
     stackSpaceIsCorrect = true;
     stackSpace->changeValTo(-curStack - 8);
+    for (int i = 0; i < funfFParamStackSpaces.size(); i++)
+        funfFParamStackSpaces.at(i)->changeValTo(curStack - 4 * (i + 1) + 8);
+    funfFParamStackSpaces.clear();
 }
 
 void MipsManager::pushRa()
@@ -224,9 +233,4 @@ void MipsManager::resetFrame(string funcName)
     tempRegPool = new _RegPool();
     // 释放occupation（reg offset intermediate）
     occupation.clear();
-
-    // 申请栈空间
-    manager->addCode(new ITypeMips(ADDIU_OP, manager->sp, manager->sp, manager->allocStackSpace(), "申请栈空间"));
-    if (funcName != "main")
-        manager->pushRa();
 }
