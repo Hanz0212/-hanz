@@ -8,9 +8,9 @@ enum mips_type
     LOAD_OP,
     STORE_OP,
 
-    ADD_OP,
+    ADDU_OP,
     ADDIU_OP,
-    SUB_OP,
+    SUBU_OP,
     MULT_OP,
     DIV_OP,
     SLT_OP,  // 小于置1
@@ -46,9 +46,9 @@ const map<mips_type, string> mips_type_2_str = {
     {STORE_OP, "STORE_OP"},
     {ANNOTATION_OP, "ANNOTATION_OP"},
 
-    {ADD_OP, "ADD_OP"},
+    {ADDU_OP, "ADDU_OP"},
     {ADDIU_OP, "ADDIU_OP"},
-    {SUB_OP, "SUB_OP"},
+    {SUBU_OP, "SUBU_OP"},
     {MULT_OP, "MULT_OP"},
     {DIV_OP, "DIV_OP"},
     {SLT_OP, "SLT_OP"},
@@ -74,9 +74,9 @@ const map<mips_type, string> mips_type_2_str = {
     {SLTIU_OP, "SLTIU_OP"}};
 
 const map<mips_type, string> mips_type_2_opstr = {
-    {ADD_OP, "add"},
+    {ADDU_OP, "addu"},
     {ADDIU_OP, "addiu"},
-    {SUB_OP, "sub"},
+    {SUBU_OP, "subu"},
     {MULT_OP, "mult"},
     {DIV_OP, "div"},
     {SLT_OP, "slt"},
@@ -106,8 +106,8 @@ const map<mips_type, string> mips_type_2_opstr = {
 };
 
 const map<mid_type, mips_type> mid_type_2_mips_type = {
-    {ADD_IR, ADD_OP},
-    {SUB_IR, SUB_OP},
+    {ADD_IR, ADDU_OP},
+    {SUB_IR, SUBU_OP},
     {MUL_IR, MULT_OP},
     {SDIV_IR, DIV_OP},
     {SREM_IR, DIV_OP},

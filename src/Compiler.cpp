@@ -70,18 +70,24 @@ int main()
 
     // 中间代码生成
     symbols_2_mid();
-    cout << "mid done!" << endl;
-
-    // 中间代码优化
-    optimize_mid();
-    print_mid();
+    del_after_br_in_block();
+    del_empty_block();
+    print_mid(fout4);
     fout4.close();
+    cout << "mid done!" << endl;
 
     // 目标代码生成
     mid_2_mips();
     cout << "mips done!" << endl;
     print_mips();
     fout5.close();
+    
+    // 中间代码优化
+    getBasicBlocks();
+    Optimizer *optimizer = new Optimizer(blocks);
+    optimizer->optimize_mid();
+    print_mid_opt(optimizer);
+    cout << "mid_opt done!" << endl;
 
     return 0;
 }

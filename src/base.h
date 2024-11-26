@@ -21,6 +21,7 @@ ofstream fout3("symbol.txt");
 ofstream fout4("llvm_ir.txt");
 // ofstream fout5("mips.asm");
 ofstream fout5("mips.txt");
+ofstream fout6("llvm_ir_opt.txt");
 ofstream ferr("error.txt");
 ifstream fin("testfile.txt");
 
@@ -47,8 +48,11 @@ void DIE(string text);
 #include "base_mid.h"
 #include "base_mips.h"
 
-#include "base_print.h"
+#include "base_block.h"
+#include "base_optimize_declare.h"
+#include "base_optimize_ssa.h"
 #include "base_optimize_mid.h"
+#include "base_print.h"
 
 bool inDie = false;
 void DIE(string text)

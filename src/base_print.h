@@ -50,24 +50,24 @@ void pre_print_mid()
     }
 }
 
-void print_mid()
+void print_mid(ofstream& fout_mid)
 {
     pre_print_mid();
     pre_print_mid();
 
-    fout4 << "declare i32 @getint()          ; 读取一个整数" << endl;
-    fout4 << "declare i32 @getchar()     ; 读取一个字符" << endl;
-    fout4 << "declare void @putint(i32)      ; 输出一个整数" << endl;
-    fout4 << "declare void @putch(i32)       ; 输出一个字符" << endl;
-    fout4 << "declare void @putstr(i8*)      ; 输出字符串" << endl;
+    fout_mid << "declare i32 @getint()          ; 读取一个整数" << endl;
+    fout_mid << "declare i32 @getchar()     ; 读取一个字符" << endl;
+    fout_mid << "declare void @putint(i32)      ; 输出一个整数" << endl;
+    fout_mid << "declare void @putch(i32)       ; 输出一个字符" << endl;
+    fout_mid << "declare void @putstr(i8*)      ; 输出字符串" << endl;
 
-    fout4 << endl;
+    fout_mid << endl;
     for (LLVM *llvm : strCodes)
     {
-        fout4 << llvm->toString() << endl;
+        fout_mid << llvm->toString() << endl;
     }
     if (!strCodes.empty())
-        fout4 << endl;
+        fout_mid << endl;
 
     int cnt = 1;
     bool inFunc = false;
@@ -77,28 +77,28 @@ void print_mid()
         if (type == FUNC_END_IR)
         {
             inFunc = false;
-            fout4 << "}" << endl;
+            fout_mid << "}" << endl;
             continue;
         }
         else if (type == LABEL_IR)
         {
-            fout4 << endl
+            fout_mid << endl
                   << llvm->toString() << endl;
             continue;
         }
 
         if (inFunc)
-            fout4 << "  ";
+            fout_mid << "  ";
         if (type == G_FUNC_DEF_IR)
         {
             inFunc = true;
             cnt = dynamic_cast<GDefLLVM *>(llvm)->funcFParams.size() + 1;
-            fout4 << endl
+            fout_mid << endl
                   << llvm->toString() << " {\n";
         }
         else
         {
-            fout4 << llvm->toString() << endl;
+            fout_mid << llvm->toString() << endl;
         }
     }
 }
@@ -122,4 +122,13 @@ void print_mips()
     fout5 << ".text" << endl;
     for (CodeMips *code : manager->mipsCodes)
         fout5 << code->toString() << endl;
+}
+
+void print_mid_opt(Optimizer *optimizer)
+{   
+    midCodes.clear();
+    for (BasicBlock *block : optimizer->blocks)
+        for (LLVM *llvm : block->codes)
+            midCodes.push_back(llvm);
+    print_mid(fout6);
 }

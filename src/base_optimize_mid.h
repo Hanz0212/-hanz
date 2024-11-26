@@ -45,11 +45,12 @@ void del_empty_block()
                 for (int k = i; k < j; k++)
                 {
                     LabelLLVM *oldLabel = dynamic_cast<LabelLLVM *>(midCodes.at(k));
-                    for (LLVM *oldPred : oldLabel->preds)
-                    {
-                        BrLLVM *br = dynamic_cast<BrLLVM *>(oldPred);
-                        br->changeLabel(oldLabel, newLabel);
-                    }
+                    oldLabel->changeSelfTo(newLabel);
+                    // for (LLVM *oldPred : oldLabel->useList)
+                    // {
+                    //     BrLLVM *br = dynamic_cast<BrLLVM *>(oldPred);
+                    //     br->changeLabel(oldLabel, newLabel);
+                    // }
                 }
                 int delCnt = j - i;
                 len -= delCnt;
@@ -62,11 +63,15 @@ void del_empty_block()
     }
 }
 
-void optimize_mid()
+// 死代码删除
+void Optimizer::del_dead_block()
 {
-    del_after_br_in_block();
-    del_empty_block();
-    // 待优化
-    // 只使用lw和sw，当需要char变量时，lw出来，需要另一个char时如果恰好也在这个字节中，可以直接移位
+
+}
+
+void Optimizer::optimize_mid()
+{   
+    del_dead_block();
+    optimize_mem2reg();
 }
 

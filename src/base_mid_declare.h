@@ -82,9 +82,9 @@ set<mid_type> retMidTypes = {
     LOAD_IR,
     // STORE_IR,
     GETELEMENTPTR_IR, // 计算目标元素的位置
-    // PHI_IR,           // 选择控制流
-    ZEXT_IR,  // 无符号扩展 语法规定了char>0
-    TRUNC_IR, // 截断数据
+    PHI_IR,           // 选择控制流
+    ZEXT_IR,          // 无符号扩展 语法规定了char>0
+    TRUNC_IR,         // 截断数据
     // BR_IR,            // 改变控制流
     // RET_IR,           // 退出当前函数，并返回值
 
@@ -210,6 +210,7 @@ struct LLVM
     mid_type midType;
     string returnTk; // 虚拟寄存器编号 @a 23 %5
     bool hasReturn;
+    set<LLVM *> useList; // 被谁引用了
 
     virtual string toString()
     {
@@ -223,6 +224,21 @@ struct LLVM
         cout << "LLVM refillNum: no override!" << endl;
         cout << midType << endl;
     }
+
+    virtual void change2newLLVM(LLVM *oldllvm, LLVM *newllvm) {}
+
+    void changeSelfTo(LLVM *newllvm)
+    {
+        for (LLVM *user : useList)
+        {
+            user->change2newLLVM(this, newllvm);
+            newllvm->addUser(user);
+        }
+        useList.clear();
+    }
+
+    void addUser(LLVM *llvm) { useList.insert(llvm); }
+    void deleteUser(LLVM *llvm) { useList.erase(llvm); }
 
     // virtual var_type
 
@@ -368,12 +384,22 @@ struct RTypeLLVM : LLVM
         this->op2 = op2;
         this->op1Tk = "undefined tk";
         this->op2Tk = "undefined tk";
+        op1->addUser(this);
+        op2->addUser(this);
     }
 
     void refillNum() override
     {
         this->op1Tk = op1->returnTk;
         this->op2Tk = op2->returnTk;
+    }
+
+    void change2newLLVM(LLVM *oldllvm, LLVM *newllvm) override
+    {
+        if (oldllvm = op1)
+            this->op1 = newllvm;
+        if (oldllvm = op2)
+            this->op2 = newllvm;
     }
 
     string toString() override
@@ -388,7 +414,7 @@ struct RTypeLLVM : LLVM
 struct AllocaLLVM : LLVM
 {
     var_type allocaType;
-    int length;
+    int length = 1;
     bool isfuncArrayParam = false;
     LLVM *funcFParam = NULL; // 辅助标识allocatype
     // 有返回值 0个op
@@ -396,27 +422,30 @@ struct AllocaLLVM : LLVM
     {
         this->allocaType = dynamic_cast<FuncFParamLLVM *>(funcFParam)->paramType;
         this->funcFParam = funcFParam;
-        this->length = 1;
         this->isfuncArrayParam = true;
+        funcFParam->addUser(this);
     }
 
     AllocaLLVM(var_type allocaType) : LLVM(ALLOCA_IR)
     { // 变量
         this->allocaType = allocaType;
-        this->length = 1;
-        this->funcFParam = NULL;
     }
 
     AllocaLLVM(var_type allocaType, int length) : LLVM(ALLOCA_IR)
     { // 数组
         this->allocaType = allocaType;
         this->length = length;
-        this->funcFParam = NULL;
     }
 
     bool isFuncArrayParam()
     {
         return this->isfuncArrayParam;
+    }
+
+    void change2newLLVM(LLVM *oldllvm, LLVM *newllvm) override
+    {
+        if (oldllvm = funcFParam)
+            this->funcFParam = newllvm;
     }
 
     void refillNum() override {}
@@ -445,6 +474,13 @@ struct LoadLLVM : LLVM
     {
         this->loadType = loadType;
         this->des = des;
+        des->addUser(this);
+    }
+
+    void change2newLLVM(LLVM *oldllvm, LLVM *newllvm) override
+    {
+        if (oldllvm = des)
+            this->des = newllvm;
     }
 
     void refillNum() override
@@ -503,6 +539,16 @@ struct StoreLLVM : LLVM
         this->storeType = storeType;
         this->val = val;
         this->des = des;
+        val->addUser(this);
+        des->addUser(this);
+    }
+
+    void change2newLLVM(LLVM *oldllvm, LLVM *newllvm) override
+    {
+        if (oldllvm = des)
+            this->des = newllvm;
+        if (oldllvm = val)
+            this->val = newllvm;
     }
 
     void refillNum() override
@@ -537,12 +583,21 @@ struct GetelementptrLLVM : LLVM
         this->size = size;
         this->src = src;
         this->offset = offset;
+        src->addUser(this);
+        offset->addUser(this);
+    }
+
+    void change2newLLVM(LLVM *oldllvm, LLVM *newllvm) override
+    {
+        if (oldllvm = src)
+            this->src = newllvm;
+        if (oldllvm = offset)
+            this->offset = newllvm;
     }
 
     void refillNum() override
     {
-        if (src != NULL)
-            this->srcTk = src->returnTk;
+        this->srcTk = src->returnTk;
         this->offsetTk = offset->returnTk;
     }
 
@@ -592,6 +647,13 @@ struct RetLLVM : LLVM
     {
         this->retType = retType;
         this->src = src;
+        src->addUser(this);
+    }
+
+    void change2newLLVM(LLVM *oldllvm, LLVM *newllvm) override
+    {
+        if (oldllvm = src)
+            this->src = newllvm;
     }
 
     void refillNum() override
@@ -621,6 +683,16 @@ struct IcmpLLVM : LLVM
         this->op1 = op1;
         this->op2 = op2;
         this->cmpType = cmpType;
+        op1->addUser(this);
+        op2->addUser(this);
+    }
+
+    void change2newLLVM(LLVM *oldllvm, LLVM *newllvm) override
+    {
+        if (oldllvm = op1)
+            this->op1 = newllvm;
+        if (oldllvm = op2)
+            this->op2 = newllvm;
     }
 
     void refillNum() override
@@ -643,6 +715,13 @@ struct ZextLLVM : LLVM
     ZextLLVM(LLVM *src) : LLVM(ZEXT_IR)
     {
         this->src = src;
+        src->addUser(this);
+    }
+
+    void change2newLLVM(LLVM *oldllvm, LLVM *newllvm) override
+    {
+        if (oldllvm = src)
+            this->src = newllvm;
     }
 
     void refillNum() override
@@ -668,12 +747,20 @@ struct TruncLLVM : LLVM
     {
         this->src = src;
         this->desTk = "i8";
+        src->addUser(this);
     }
 
     TruncLLVM(LLVM *src, string desTk) : LLVM(TRUNC_IR)
     {
         this->src = src;
         this->desTk = desTk;
+        src->addUser(this);
+    }
+
+    void change2newLLVM(LLVM *oldllvm, LLVM *newllvm) override
+    {
+        if (oldllvm = src)
+            this->src = newllvm;
     }
 
     void refillNum() override
@@ -747,8 +834,23 @@ struct CallLLVM : LLVM
         this->funcName = funcName;
         this->paramSymbols = paramSymbols;
         this->params = params;
+        for (LLVM *llvm : params)
+            llvm->addUser(this);
 
         this->hasReturn = retType != VoidFunc;
+    }
+
+    void change2newLLVM(LLVM *oldllvm, LLVM *newllvm) override
+    {
+        vector<LLVM *> newParams;
+        for (LLVM *llvm : params)
+        {
+            if (llvm == oldllvm)
+                newParams.push_back(newllvm);
+            else
+                newParams.push_back(llvm);
+        }
+        params = newParams;
     }
 
     void refillNum() override
@@ -795,8 +897,6 @@ struct CallLLVM : LLVM
 // 13:
 struct LabelLLVM : LLVM
 {
-    vector<LLVM *> preds; // 前置结点
-
     LabelLLVM() : LLVM(LABEL_IR) {}
 
     void refillNum() override {}
@@ -818,7 +918,8 @@ struct BrLLVM : LLVM
         this->label1 = label;
         this->label2 = NULL;
         this->cmp = NULL;
-        dynamic_cast<LabelLLVM *>(label)->preds.push_back(this);
+        // dynamic_cast<LabelLLVM *>(label)->prevs.push_back(this);
+        label1->addUser(this);
     }
 
     BrLLVM(LLVM *cmp, LLVM *label1, LLVM *label2) : LLVM(BR_IR)
@@ -826,21 +927,32 @@ struct BrLLVM : LLVM
         this->cmp = cmp;
         this->label1 = label1;
         this->label2 = label2;
-        dynamic_cast<LabelLLVM *>(label1)->preds.push_back(this);
-        dynamic_cast<LabelLLVM *>(label2)->preds.push_back(this);
+        // dynamic_cast<LabelLLVM *>(label1)->prevs.push_back(this);
+        // dynamic_cast<LabelLLVM *>(label2)->prevs.push_back(this);
+        label1->addUser(this);
+        label2->addUser(this);
+        cmp->addUser(this);
     }
 
-    void changeLabel(LLVM *oldLabel, LLVM *newLabel)
-    {
-        if (label1 == oldLabel)
-            label1 = newLabel;
-        if (label2 == oldLabel)
-            label2 = newLabel;
-    }
+    // void changeLabel(LLVM *oldLabel, LLVM *newLabel)
+    // {
+    //     if (label1 == oldLabel)
+    //         label1 = newLabel;
+    //     if (label2 == oldLabel)
+    //         label2 = newLabel;
+    // }
 
     bool isNoCond()
     {
         return this->cmp == NULL;
+    }
+
+    void change2newLLVM(LLVM *oldllvm, LLVM *newllvm) override
+    {
+        if (oldllvm = label1)
+            this->label1 = newllvm;
+        if (oldllvm = label2)
+            this->label2 = newllvm;
     }
 
     void refillNum() override
@@ -859,6 +971,41 @@ struct BrLLVM : LLVM
             return join_str({"br", "label", label1Tk});
         else
             return join_str({"br", "i1", cmpTk + ",", "label", label1Tk + ",", "label", label2Tk});
+    }
+};
+
+struct PhiLLVM : LLVM
+{
+    vector<pair<LLVM *, LLVM *>> list;
+    vector<pair<string, string>> listTk;
+    PhiLLVM(vector<pair<LLVM *, LLVM *>> list) : LLVM(PHI_IR)
+    {
+        this->list = list;
+        // cmp->addUser(this);
+    }
+
+    // void change2newLLVM(LLVM *oldllvm, LLVM *newllvm) override
+    // {
+    //     // todo
+    // }
+
+    void refillNum() override
+    {
+        for (auto &pair : list)
+        {
+            string valTk = pair.first->returnTk;
+            string labelTk = pair.second->returnTk;
+            listTk.push_back({valTk, labelTk});
+        }
+    }
+
+    string toString() override
+    {
+        vector<string> ans;
+        for (auto &pair : listTk)
+            ans.push_back(join_str({"[" + pair.first + ",", pair.second + "]"}));
+        string listStr = join_str(ans);
+        return join_str({returnTk, "=", "phi", "i32", listStr});
     }
 };
 

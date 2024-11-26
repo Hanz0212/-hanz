@@ -131,7 +131,7 @@ void create_code()
             // else // offset 为 reg
             // {
             //     manager->addCode(new ITypeMips(SLL_OP, offset, offset, new IntermediateReg(2), "#reg <<= 2"));
-            //     manager->addCode(new RTypeMips(ADD_OP, rt, base, offset, "#rt = offset+base"));
+            //     manager->addCode(new RTypeMips(ADDU_OP, rt, base, offset, "#rt = offset+base"));
             //     manager->addCode(new LaMips(rt, manager->zero_off, rt, llvm->toString()));
             // }
             if (base->getType() == LABEL)
@@ -147,7 +147,7 @@ void create_code()
                 else
                 {
                     manager->addCode(new ITypeMips(SLL_OP, offset, offset, new IntermediateReg(2), "#reg <<= 2"));
-                    manager->addCode(new RTypeMips(ADD_OP, rt, manager->sp, offset, "#reg = reg+sp"));
+                    manager->addCode(new RTypeMips(ADDU_OP, rt, manager->sp, offset, "#reg = reg+sp"));
                 }
                 manager->addCode(new LaMips(rt, base, rt, llvm->toString()));
             }
@@ -158,7 +158,7 @@ void create_code()
                 else // offset 为 reg
                 {
                     manager->addCode(new ITypeMips(SLL_OP, offset, offset, new IntermediateReg(2), "#reg <<= 2"));
-                    manager->addCode(new RTypeMips(ADD_OP, rt, base, offset, "#rt = offset+base"));
+                    manager->addCode(new RTypeMips(ADDU_OP, rt, base, offset, "#rt = offset+base"));
                     manager->addCode(new LaMips(rt, manager->zero_off, rt, llvm->toString()));
                 }
             }
@@ -263,7 +263,7 @@ void create_code()
             ZextLLVM *zextLLVM = dynamic_cast<ZextLLVM *>(llvm);
             RegPtr rs = manager->findOccupiedReg(zextLLVM->src, true);
             RegPtr rd = manager->allocTempReg(zextLLVM);
-            manager->addCode(new RTypeMips(ADD_OP, rd, rs, manager->zero, llvm->toString()));
+            manager->addCode(new RTypeMips(ADDU_OP, rd, rs, manager->zero, llvm->toString()));
             break;
         }
         case TRUNC_IR:
